@@ -1,12 +1,12 @@
 import { Scene } from './components/Scene';
 import { Controls } from './components/Controls';
 import { useAppSelector, useAppDispatch } from './store/hooks';
-import { setMaterialType, setSelectedFace, setFaceStyle, toggleDebugMode } from './store/cubeSlice';
+import { setMaterialType, setSelectedFace, setFaceStyle, toggleDebugMode, toggleBackground } from './store/cubeSlice';
 import './App.css';
 
 function App() {
   const dispatch = useAppDispatch();
-  const { materialType, selectedFace, faceStyle, debugMode } = useAppSelector((state) => state.cube);
+  const { materialType, selectedFace, faceStyle, debugMode, showBackground } = useAppSelector((state) => state.cube);
 
   return (
     <div className="app">
@@ -15,6 +15,7 @@ function App() {
         selectedFace={selectedFace}
         faceStyle={faceStyle}
         debugMode={debugMode}
+        showBackground={showBackground}
       />
       <Controls
         materialType={materialType}
@@ -25,6 +26,8 @@ function App() {
         onFaceStyleChange={(style) => dispatch(setFaceStyle(style))}
         debugMode={debugMode}
         onDebugToggle={() => dispatch(toggleDebugMode())}
+        showBackground={showBackground}
+        onBackgroundToggle={() => dispatch(toggleBackground())}
       />
     </div>
   );

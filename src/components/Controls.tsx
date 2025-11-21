@@ -11,6 +11,8 @@ interface ControlsProps {
   onFaceStyleChange: (style: FaceStyle) => void;
   debugMode: boolean;
   onDebugToggle: () => void;
+  showBackground: boolean;
+  onBackgroundToggle: () => void;
 }
 
 const FACE_NAMES = ['Right', 'Left', 'Top', 'Bottom', 'Front', 'Back'];
@@ -25,6 +27,8 @@ export function Controls({
   onFaceStyleChange,
   debugMode,
   onDebugToggle,
+  showBackground,
+  onBackgroundToggle,
 }: ControlsProps) {
   return (
     <div className="controls">
@@ -58,6 +62,18 @@ export function Controls({
             onClick={onDebugToggle}
           >
             {debugMode ? 'ON' : 'OFF'}
+          </button>
+        </div>
+      </div>
+
+      <div className="controls-section">
+        <h3>Background</h3>
+        <div className="button-group">
+          <button
+            className={showBackground ? 'active' : ''}
+            onClick={onBackgroundToggle}
+          >
+            {showBackground ? 'ENV MAP' : 'DARK'}
           </button>
         </div>
       </div>

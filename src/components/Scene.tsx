@@ -11,9 +11,10 @@ interface SceneProps {
   selectedFace: FaceIndex | null;
   faceStyle: string;
   debugMode: boolean;
+  showBackground: boolean;
 }
 
-export function Scene({ materialType, selectedFace, faceStyle, debugMode }: SceneProps) {
+export function Scene({ materialType, selectedFace, faceStyle, debugMode, showBackground }: SceneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -21,6 +22,7 @@ export function Scene({ materialType, selectedFace, faceStyle, debugMode }: Scen
   const cubeRef = useRef<THREE.Mesh | null>(null);
   const axesHelperRef = useRef<THREE.AxesHelper | null>(null);
   const faceLabelsRef = useRef<THREE.Group | null>(null);
+  const envMapRef = useRef<THREE.Texture | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -54,9 +56,6 @@ export function Scene({ materialType, selectedFace, faceStyle, debugMode }: Scen
     scene.add(cube);
     cubeRef.current = cube;
 
-    // Setup lighting
-    setupLighting(scene);
-
     // Setup controls
     const controls = createControls(cube, renderer.domElement, camera);
 
@@ -83,6 +82,14 @@ export function Scene({ materialType, selectedFace, faceStyle, debugMode }: Scen
     }
     animate();
 
+    // Setup lighting async (loads environment map)
+    setupLighting(scene, renderer).then((envMap) => {
+      if (envMap) {
+        envMapRef.current = envMap;
+      }
+      console.log('Scene fully initialized with environment map');
+    });
+
     // Handle resize
     function handleResize() {
       camera.aspect = window.innerWidth / window.innerHeight;
@@ -107,6 +114,15 @@ export function Scene({ materialType, selectedFace, faceStyle, debugMode }: Scen
       faceLabelsRef.current.visible = debugMode;
     }
   }, [debugMode]);
+
+  // Update background and environment visibility
+  useEffect(() => {
+    if (sceneRef.current && envMapRef.current) {
+      // Toggle both background and environment reflections
+      sceneRef.current.background = showBackground ? envMapRef.current : null;
+      sceneRef.current.environment = showBackground ? envMapRef.current : null;
+    }
+  }, [showBackground]);
 
   // Update materials when props change
   useEffect(() => {
@@ -150,9 +166,9 @@ function updateToBasic(material: THREE.MeshStandardMaterial) {
 function getStyleRoughness(style: string): number {
   const roughnessMap: Record<string, number> = {
     wood: 0.8,
-    glass: 0.1,
+    glass: 0.05,  // Very smooth for clear reflections
     fur: 0.9,
-    metal: 0.2,
+    metal: 0.1,   // Very smooth metal for mirror-like reflections
     plastic: 0.5,
   };
   return roughnessMap[style] ?? 0.5;
@@ -161,9 +177,9 @@ function getStyleRoughness(style: string): number {
 function getStyleMetalness(style: string): number {
   const metalnessMap: Record<string, number> = {
     wood: 0,
-    glass: 0.1,
+    glass: 0,     // Glass is dielectric, not metal
     fur: 0,
-    metal: 1,
+    metal: 1,     // Fully metallic for maximum reflections
     plastic: 0,
   };
   return metalnessMap[style] ?? 0;

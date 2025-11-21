@@ -7,6 +7,7 @@ interface CubeState {
   selectedFace: FaceIndex | null;
   faceStyle: FaceStyle;
   debugMode: boolean;
+  showBackground: boolean;
 }
 
 const initialState: CubeState = {
@@ -14,6 +15,7 @@ const initialState: CubeState = {
   selectedFace: null,
   faceStyle: 'wood',
   debugMode: false,
+  showBackground: true,
 };
 
 const cubeSlice = createSlice({
@@ -32,8 +34,11 @@ const cubeSlice = createSlice({
     toggleDebugMode: (state) => {
       state.debugMode = !state.debugMode;
     },
+    toggleBackground: (state) => {
+      state.showBackground = !state.showBackground;
+    },
   },
 });
 
-export const { setMaterialType, setSelectedFace, setFaceStyle, toggleDebugMode } = cubeSlice.actions;
+export const { setMaterialType, setSelectedFace, setFaceStyle, toggleDebugMode, toggleBackground } = cubeSlice.actions;
 export default cubeSlice.reducer;

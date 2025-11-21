@@ -1,48 +1,54 @@
 import * as THREE from 'three';
+import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js';
 
-export function setupLighting(scene: THREE.Scene): void {
+export async function setupLighting(
+  scene: THREE.Scene,
+  renderer: THREE.WebGLRenderer
+): Promise<THREE.Texture | null> {
   // Ambient light for base illumination
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
   scene.add(ambientLight);
 
-  // Main directional light (key light)
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+  // Main directional light (sun)
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
   directionalLight.position.set(5, 5, 5);
   scene.add(directionalLight);
 
-  // Fill light from opposite side with slight blue tint
-  const directionalLight2 = new THREE.DirectionalLight(0x8888ff, 0.6);
-  directionalLight2.position.set(-5, 2, -5);
-  scene.add(directionalLight2);
+  // Load the environment map
+  const exrLoader = new EXRLoader();
 
-  // Rim light from top for edge definition
-  const rimLight = new THREE.DirectionalLight(0xffffff, 0.4);
-  rimLight.position.set(0, 10, 0);
-  scene.add(rimLight);
+  return new Promise((resolve) => {
+    exrLoader.load(
+      '/src/assets/golden_gate_hills_4k.exr',
+      (texture) => {
+        texture.mapping = THREE.EquirectangularReflectionMapping;
 
-  // Create a gradient environment map using PMREMGenerator
-  const pmremGenerator = new THREE.PMREMGenerator(new THREE.WebGLRenderer());
-  pmremGenerator.compileEquirectangularShader();
+        // Generate PMREM (Pre-filtered Mipmapped Radiance Environment Map)
+        const pmremGenerator = new THREE.PMREMGenerator(renderer);
+        pmremGenerator.compileEquirectangularShader();
 
-  // Create a simple scene for the environment
-  const envScene = new THREE.Scene();
+        const envMap = pmremGenerator.fromEquirectangular(texture).texture;
 
-  // Add colored lights to the environment scene for reflections
-  const envLight1 = new THREE.PointLight(0xffffff, 1, 100);
-  envLight1.position.set(10, 10, 10);
-  envScene.add(envLight1);
+        // Apply environment map to scene
+        scene.environment = envMap;
+        scene.background = envMap;
 
-  const envLight2 = new THREE.PointLight(0x4488ff, 0.5, 100);
-  envLight2.position.set(-10, 5, -10);
-  envScene.add(envLight2);
+        // Clean up
+        texture.dispose();
+        pmremGenerator.dispose();
 
-  const envLight3 = new THREE.PointLight(0xff8844, 0.3, 100);
-  envLight3.position.set(0, -10, 0);
-  envScene.add(envLight3);
-
-  // Use the scene's background as environment
-  const environmentTexture = pmremGenerator.fromScene(envScene).texture;
-  scene.environment = environmentTexture;
-
-  pmremGenerator.dispose();
+        console.log('Environment map loaded successfully');
+        resolve(envMap);
+      },
+      undefined,
+      (error) => {
+        console.error('Error loading environment map:', error);
+        // Fallback to basic lighting
+        const fallbackLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        fallbackLight.position.set(-5, 2, -5);
+        scene.add(fallbackLight);
+        resolve(null);
+      }
+    );
+  });
 }

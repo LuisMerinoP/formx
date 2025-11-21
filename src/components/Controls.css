@@ -52,8 +52,12 @@
 
 .button-group.face-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 8px;
+}
+
+.button-group.face-grid button:first-child {
+  grid-column: 1 / -1;
 }
 
 .button-group button {
