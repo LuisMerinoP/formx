@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { createCube } from './cube';
-import { setupLighting } from './lighting';
 import { createControls } from './controls';
 import { createFaceLabels } from './faceLabels';
+import { AssetManager } from './assetManager';
 import type { MaterialType, FaceIndex, FaceStyle, EnvMapQuality } from './types';
 
 interface RendererConfig {
@@ -33,7 +33,7 @@ export class Renderer {
   private controls: { update: () => void; dispose: () => void } | null = null;
   private axesHelper: THREE.AxesHelper | null = null;
   private faceLabels: THREE.Group | null = null;
-  private envMap: THREE.Texture | null = null;
+  private assetManager: AssetManager | null = null;
 
   private animationId: number | null = null;
   private eventListeners: Map<string, Set<EventCallback>> = new Map();
@@ -97,8 +97,13 @@ export class Renderer {
       this.faceLabels.visible = this.state.debugMode;
       this.cube.add(this.faceLabels);
 
-      this.loadEnvironmentMap(this.state.envMapQuality);
-      this.emit('ready');
+      // Initialize AssetManager and pre-load all environment maps
+      this.assetManager = new AssetManager(this.scene, this.renderer);
+      this.assetManager.initialize().then(() => {
+        // Apply the initial environment map quality
+        this.loadEnvironmentMap(this.state.envMapQuality);
+        this.emit('ready');
+      });
     } catch (error) {
       this.emit('error', { message: 'Initialization failed', error });
     }
@@ -136,13 +141,13 @@ export class Renderer {
       this.controls.dispose();
     }
 
+    if (this.assetManager) {
+      this.assetManager.dispose();
+    }
+
     if (this.renderer) {
       this.renderer.dispose();
       this.renderer.domElement.remove();
-    }
-
-    if (this.envMap) {
-      this.envMap.dispose();
     }
 
     this.eventListeners.clear();
@@ -188,10 +193,8 @@ export class Renderer {
   setBackgroundVisible(visible: boolean): void {
     this.state.showBackground = visible;
 
-    if (this.scene && this.envMap) {
-      this.scene.background = visible ? this.envMap : null;
-      this.scene.environment = visible ? this.envMap : null;
-    }
+    // Re-apply the current environment map with new visibility setting
+    this.loadEnvironmentMap(this.state.envMapQuality);
   }
 
   setEnvMapQuality(quality: EnvMapQuality): void {
@@ -233,28 +236,17 @@ export class Renderer {
   }
 
   private async loadEnvironmentMap(quality: EnvMapQuality): Promise<void> {
-    if (!this.scene || !this.renderer) return;
+    if (!this.scene || !this.assetManager) return;
 
     try {
-      if (this.envMap) {
-        this.envMap.dispose();
-      }
-
-      const envMap = await setupLighting(
-        this.scene,
-        this.renderer,
-        quality,
-        this.envMap !== null
-      );
+      // Get the cached environment map from AssetManager
+      const envMap = await this.assetManager.getEnvMap(quality);
 
       if (envMap) {
-        this.envMap = envMap;
+        // Apply to scene with current visibility settings
+        this.assetManager.applyEnvMapToScene(envMap, this.state.showBackground);
 
-        if (this.state.showBackground) {
-          this.scene.environment = envMap;
-          this.scene.background = envMap;
-        }
-
+        // Force material update to use new environment map
         if (this.cube) {
           const materials = Array.isArray(this.cube.material)
             ? this.cube.material
