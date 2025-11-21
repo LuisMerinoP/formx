@@ -79,9 +79,9 @@ export function RendererProvider({ children }: RendererProviderProps) {
       renderer.dispose();
     };
   }, [dispatch]);
-  const initialize = useCallback((container: HTMLElement) => {
+  const initialize = useCallback(async (container: HTMLElement) => {
     if (rendererRef.current && !isInitialized) {
-      rendererRef.current.initialize(container);
+      await rendererRef.current.initialize(container);
       rendererRef.current.start();
       setIsInitialized(true);
     }

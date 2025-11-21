@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import WebGPU from 'three/addons/capabilities/WebGPU.js';
+import { WebGPURenderer } from 'three/webgpu';
 import { createCube } from './cube';
 import { createControls } from './controls';
 import { createFaceLabels } from './faceLabels';
@@ -28,12 +30,13 @@ type EventCallback = (data?: unknown) => void;
 export class Renderer {
   private scene: THREE.Scene | null = null;
   private camera: THREE.PerspectiveCamera | null = null;
-  private renderer: THREE.WebGLRenderer | null = null;
+  private renderer: THREE.WebGLRenderer | WebGPURenderer | null = null;
   private cube: THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial[]> | null = null;
   private controls: { update: () => void; dispose: () => void } | null = null;
   private axesHelper: THREE.AxesHelper | null = null;
   private faceLabels: THREE.Group | null = null;
   private assetManager: AssetManager | null = null;
+  private isWebGPU = false;
 
   private animationId: number | null = null;
   private eventListeners: Map<string, Set<EventCallback>> = new Map();
@@ -60,7 +63,7 @@ export class Renderer {
     }
   }
 
-  initialize(container: HTMLElement): void {
+  async initialize(container: HTMLElement): Promise<void> {
     try {
       const canvas = document.createElement('canvas');
       canvas.tabIndex = 1;
@@ -77,11 +80,29 @@ export class Renderer {
       );
       this.camera.position.z = 7;
 
-      this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      // Try WebGPU first, fallback to WebGL
+      if (WebGPU.isAvailable()) {
+        console.log('WebGPU is available! Using WebGPU renderer.');
+        this.renderer = new WebGPURenderer({ canvas, antialias: true });
+        this.isWebGPU = true;
+        await this.renderer.init();
+      } else {
+        console.log('WebGPU not available. Using WebGL renderer.');
+        this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+        this.isWebGPU = false;
+      }
+
       this.renderer.setSize(container.clientWidth, container.clientHeight);
       this.renderer.setPixelRatio(window.devicePixelRatio);
-      this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      this.renderer.toneMappingExposure = 1;
+
+      // Configure tone mapping
+      if (this.isWebGPU) {
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 1;
+      } else {
+        (this.renderer as THREE.WebGLRenderer).toneMapping = THREE.ACESFilmicToneMapping;
+        (this.renderer as THREE.WebGLRenderer).toneMappingExposure = 1;
+      }
 
       this.cube = createCube();
       this.scene.add(this.cube);
@@ -98,12 +119,12 @@ export class Renderer {
       this.cube.add(this.faceLabels);
 
       // Initialize AssetManager and pre-load all environment maps
-      this.assetManager = new AssetManager(this.scene, this.renderer);
-      this.assetManager.initialize().then(() => {
-        // Apply the initial environment map quality
-        this.loadEnvironmentMap(this.state.envMapQuality);
-        this.emit('ready');
-      });
+      this.assetManager = new AssetManager(this.scene, this.renderer, this.isWebGPU);
+      await this.assetManager.initialize();
+
+      // Apply the initial environment map quality
+      await this.loadEnvironmentMap(this.state.envMapQuality);
+      this.emit('ready');
     } catch (error) {
       this.emit('error', { message: 'Initialization failed', error });
     }
@@ -120,7 +141,11 @@ export class Renderer {
       }
 
       if (this.renderer && this.scene && this.camera) {
-        this.renderer.render(this.scene, this.camera);
+        if (this.isWebGPU) {
+          (this.renderer as WebGPURenderer).render(this.scene, this.camera);
+        } else {
+          this.renderer.render(this.scene, this.camera);
+        }
       }
     };
 
@@ -211,7 +236,7 @@ export class Renderer {
   }
 
   getState() {
-    return { ...this.state };
+    return { ...this.state, isWebGPU: this.isWebGPU };
   }
 
   on(event: RendererEvent, callback: EventCallback): void {

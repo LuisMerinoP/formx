@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
+import { WebGPURenderer } from 'three/webgpu';
 import type { EnvMapQuality, FaceStyle, MaterialType } from './types';
 
 interface EnvMapAsset {
@@ -41,8 +42,9 @@ interface MaterialConfig {
  */
 export class AssetManager {
   private envMaps: Map<EnvMapQuality, EnvMapAsset> = new Map();
-  private pmremGenerator: THREE.PMREMGenerator;
+  private pmremGenerator: THREE.PMREMGenerator | null = null;
   private scene: THREE.Scene;
+  private isWebGPU: boolean;
   private isInitialized = false;
 
   // Pre-instantiated material library
@@ -57,10 +59,17 @@ export class AssetManager {
     plastic: { roughness: 0.5, metalness: 0, color: 0xFF6347 },
   };
 
-  constructor(scene: THREE.Scene, renderer: THREE.WebGLRenderer) {
+  constructor(scene: THREE.Scene, renderer: THREE.WebGLRenderer | WebGPURenderer, isWebGPU: boolean) {
     this.scene = scene;
-    this.pmremGenerator = new THREE.PMREMGenerator(renderer);
-    this.pmremGenerator.compileEquirectangularShader();
+    this.isWebGPU = isWebGPU;
+
+    // PMREMGenerator is only used for WebGL
+    // WebGPU handles environment maps natively
+    if (!isWebGPU) {
+      this.pmremGenerator = new THREE.PMREMGenerator(renderer as THREE.WebGLRenderer);
+      this.pmremGenerator.compileEquirectangularShader();
+    }
+
     this.initializeMaterials();
   }
 
@@ -171,7 +180,11 @@ export class AssetManager {
 
     this.envMaps.clear();
     this.materials.clear();
-    this.pmremGenerator.dispose();
+
+    if (this.pmremGenerator) {
+      this.pmremGenerator.dispose();
+    }
+
     this.isInitialized = false;
   }
 
@@ -201,7 +214,9 @@ export class AssetManager {
   }
 
   /**
-   * Load an HDR file and process it through PMREM for optimal PBR rendering.
+   * Load an HDR file and process it for optimal PBR rendering.
+   * WebGL: Uses PMREM for pre-filtered environment maps
+   * WebGPU: Uses native environment mapping (no PMREM needed)
    */
   private loadAndProcessHDR(quality: EnvMapQuality): Promise<THREE.Texture | null> {
     return new Promise((resolve) => {
@@ -214,13 +229,23 @@ export class AssetManager {
           try {
             texture.mapping = THREE.EquirectangularReflectionMapping;
 
-            const renderTarget = this.pmremGenerator.fromEquirectangular(texture);
-            const envMap = renderTarget.texture;
+            if (this.isWebGPU) {
+              // WebGPU handles environment maps natively, no PMREM needed
+              resolve(texture);
+            } else {
+              // WebGL needs PMREM processing for optimal performance
+              if (!this.pmremGenerator) {
+                throw new Error('PMREMGenerator not initialized for WebGL');
+              }
 
-            // Clean up the original texture after processing
-            texture.dispose();
+              const renderTarget = this.pmremGenerator.fromEquirectangular(texture);
+              const envMap = renderTarget.texture;
 
-            resolve(envMap);
+              // Clean up the original texture after processing
+              texture.dispose();
+
+              resolve(envMap);
+            }
           } catch (error) {
             console.error(`Failed to process HDR texture (${quality}):`, error);
             resolve(null);
