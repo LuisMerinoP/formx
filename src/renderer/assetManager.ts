@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
-import type { EnvMapQuality } from './types';
+import type { EnvMapQuality, FaceStyle, MaterialType } from './types';
 
 interface EnvMapAsset {
   texture: THREE.Texture | null;
@@ -9,8 +9,35 @@ interface EnvMapAsset {
 }
 
 /**
- * AssetManager handles loading and caching of HDR environment maps.
+ * Material configuration for a specific style.
+ */
+interface MaterialConfig {
+  roughness: number;
+  metalness: number;
+  color: number;
+}
+
+/**
+ * AssetManager handles loading and caching of HDR environment maps and materials.
  * All assets are pre-loaded during initialization to ensure smooth runtime performance.
+ *
+ * NOTE ON MATERIAL PRE-INSTANTIATION:
+ * In this simple cube application, pre-instantiating materials is overkill because:
+ * - Material property updates are extremely cheap (~0.1ms for setting roughness/color)
+ * - We only have 1 object with 6 faces and 5 styles
+ * - The real performance bottleneck is HDR loading + PMREM processing (~500-2000ms)
+ *
+ * However, this pattern becomes valuable in larger applications with:
+ * - Complex shader graphs (custom shaders, multiple texture maps, procedural generation)
+ * - Large object counts (10,000+ objects each needing materials)
+ *   * Architectural visualization with complex buildings
+ *   * CAD applications with massive assemblies
+ *   * Material switching becomes a bottleneck at this scale
+ * - Strict performance requirements (VR/XR needing guaranteed 90+ FPS)
+ * - Material libraries (100+ pre-configured materials like in Blender/Unity/Unreal)
+ *
+ * This implementation demonstrates the pattern for educational purposes and as a
+ * foundation for scaling to more complex scenarios.
  */
 export class AssetManager {
   private envMaps: Map<EnvMapQuality, EnvMapAsset> = new Map();
@@ -18,10 +45,49 @@ export class AssetManager {
   private scene: THREE.Scene;
   private isInitialized = false;
 
+  // Pre-instantiated material library
+  private materials: Map<string, THREE.MeshStandardMaterial> = new Map();
+
+  // Material configuration presets
+  private readonly materialConfigs: Record<FaceStyle, MaterialConfig> = {
+    wood: { roughness: 0.8, metalness: 0, color: 0x8B4513 },
+    glass: { roughness: 0.05, metalness: 0, color: 0x87CEEB },
+    fur: { roughness: 0.9, metalness: 0, color: 0xD2691E },
+    metal: { roughness: 0.1, metalness: 1, color: 0xC0C0C0 },
+    plastic: { roughness: 0.5, metalness: 0, color: 0xFF6347 },
+  };
+
   constructor(scene: THREE.Scene, renderer: THREE.WebGLRenderer) {
     this.scene = scene;
     this.pmremGenerator = new THREE.PMREMGenerator(renderer);
     this.pmremGenerator.compileEquirectangularShader();
+    this.initializeMaterials();
+  }
+
+  /**
+   * Pre-instantiate all material combinations.
+   * Creates materials for: 2 types (basic/pbr) × 5 styles = 10 materials
+   */
+  private initializeMaterials(): void {
+    const materialTypes: MaterialType[] = ['basic', 'pbr'];
+    const faceStyles: FaceStyle[] = ['wood', 'glass', 'fur', 'metal', 'plastic'];
+
+    materialTypes.forEach(type => {
+      faceStyles.forEach(style => {
+        const key = this.getMaterialKey(type, style);
+        const config = type === 'pbr'
+          ? this.materialConfigs[style]
+          : { roughness: 0.5, metalness: 0, color: 0x00aaff }; // Basic material defaults
+
+        const material = new THREE.MeshStandardMaterial({
+          color: config.color,
+          roughness: config.roughness,
+          metalness: config.metalness,
+        });
+
+        this.materials.set(key, material);
+      });
+    });
   }
 
   /**
@@ -74,6 +140,22 @@ export class AssetManager {
   }
 
   /**
+   * Get a pre-instantiated material by type and style.
+   * Returns immediately with no creation overhead.
+   */
+  getMaterial(type: MaterialType, style: FaceStyle): THREE.MeshStandardMaterial | null {
+    const key = this.getMaterialKey(type, style);
+    return this.materials.get(key) || null;
+  }
+
+  /**
+   * Generate a unique key for material lookup.
+   */
+  private getMaterialKey(type: MaterialType, style: FaceStyle): string {
+    return `${type}-${style}`;
+  }
+
+  /**
    * Dispose of all loaded assets and cleanup resources.
    */
   dispose(): void {
@@ -83,7 +165,12 @@ export class AssetManager {
       }
     });
 
+    this.materials.forEach(material => {
+      material.dispose();
+    });
+
     this.envMaps.clear();
+    this.materials.clear();
     this.pmremGenerator.dispose();
     this.isInitialized = false;
   }

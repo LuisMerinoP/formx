@@ -29,7 +29,7 @@ export class Renderer {
   private scene: THREE.Scene | null = null;
   private camera: THREE.PerspectiveCamera | null = null;
   private renderer: THREE.WebGLRenderer | null = null;
-  private cube: THREE.Mesh | null = null;
+  private cube: THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial[]> | null = null;
   private controls: { update: () => void; dispose: () => void } | null = null;
   private axesHelper: THREE.AxesHelper | null = null;
   private faceLabels: THREE.Group | null = null;
@@ -267,11 +267,13 @@ export class Renderer {
   }
 
   private updateMaterials(targetFace?: FaceIndex | null): void {
-    if (!this.cube) return;
+    if (!this.cube || !this.assetManager) return;
 
-    const materials = Array.isArray(this.cube.material)
-      ? this.cube.material
-      : [this.cube.material];
+    // Get the pre-instantiated material from AssetManager
+    const sourceMaterial = this.assetManager.getMaterial(this.state.materialType, this.state.faceStyle);
+    if (!sourceMaterial) return;
+
+    const materials = this.cube.material;
 
     materials.forEach((material, index) => {
       const shouldUpdate =
@@ -280,59 +282,19 @@ export class Renderer {
         targetFace === index;
 
       if (shouldUpdate) {
-        if (this.state.materialType === 'pbr') {
-          this.updateToPBR(material as THREE.MeshStandardMaterial);
-        } else {
-          this.updateToBasic(material as THREE.MeshStandardMaterial);
-        }
+        // Copy properties from pre-instantiated material template
+        // NOTE: We copy properties instead of replacing the material instance because:
+        // 1. Each face needs its own material instance (can't share one instance across faces)
+        // 2. Replacing material instances would require careful disposal and re-application
+        // 3. Property copying is simpler and avoids memory leaks
+        //
+        // In a more complex app, you might pre-instantiate 6 materials per style combination
+        // and swap material instances directly: materials[index] = preInstantiatedMaterials[index]
+        material.roughness = sourceMaterial.roughness;
+        material.metalness = sourceMaterial.metalness;
+        material.color.copy(sourceMaterial.color);
+        material.needsUpdate = true;
       }
     });
-  }
-
-  private updateToPBR(material: THREE.MeshStandardMaterial): void {
-    material.roughness = this.getStyleRoughness(this.state.faceStyle);
-    material.metalness = this.getStyleMetalness(this.state.faceStyle);
-    material.color.setHex(this.getStyleColor(this.state.faceStyle));
-    material.needsUpdate = true;
-  }
-
-  private updateToBasic(material: THREE.MeshStandardMaterial): void {
-    material.roughness = 0.5;
-    material.metalness = 0;
-    material.color.setHex(0x00aaff);
-    material.needsUpdate = true;
-  }
-
-  private getStyleRoughness(style: FaceStyle): number {
-    const roughnessMap: Record<FaceStyle, number> = {
-      wood: 0.8,
-      glass: 0.05,
-      fur: 0.9,
-      metal: 0.1,
-      plastic: 0.5,
-    };
-    return roughnessMap[style] ?? 0.5;
-  }
-
-  private getStyleMetalness(style: FaceStyle): number {
-    const metalnessMap: Record<FaceStyle, number> = {
-      wood: 0,
-      glass: 0,
-      fur: 0,
-      metal: 1,
-      plastic: 0,
-    };
-    return metalnessMap[style] ?? 0;
-  }
-
-  private getStyleColor(style: FaceStyle): number {
-    const colorMap: Record<FaceStyle, number> = {
-      wood: 0x8B4513,
-      glass: 0x87CEEB,
-      fur: 0xD2691E,
-      metal: 0xC0C0C0,
-      plastic: 0xFF6347,
-    };
-    return colorMap[style] ?? 0x00aaff;
   }
 }

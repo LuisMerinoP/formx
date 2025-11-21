@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export function createCube(): THREE.Mesh {
+export function createCube(): THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial[]> {
   const geometry = new THREE.BoxGeometry(2, 2, 2);
 
   // Create 6 materials for each face
