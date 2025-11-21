@@ -1,41 +1,27 @@
-import type { MaterialType, FaceIndex, FaceStyle, EnvMapQuality } from '../types';
+import type { FaceIndex, FaceStyle } from '../types';
+import { useRenderer } from '../contexts/RendererContext';
 import formxLogo from '../assets/formx.svg';
 import './Controls.css';
-
-interface ControlsProps {
-  materialType: MaterialType;
-  onMaterialTypeChange: (type: MaterialType) => void;
-  selectedFace: FaceIndex | null;
-  onFaceSelect: (face: FaceIndex | null) => void;
-  faceStyle: FaceStyle;
-  onFaceStyleChange: (style: FaceStyle) => void;
-  debugMode: boolean;
-  onDebugToggle: () => void;
-  showBackground: boolean;
-  onBackgroundToggle: () => void;
-  onResetCamera: () => void;
-  envMapQuality: EnvMapQuality;
-  onEnvMapQualityChange: (quality: EnvMapQuality) => void;
-}
 
 const FACE_NAMES = ['Right', 'Left', 'Top', 'Bottom', 'Front', 'Back'];
 const STYLES: FaceStyle[] = ['wood', 'glass', 'fur', 'metal', 'plastic'];
 
-export function Controls({
-  materialType,
-  onMaterialTypeChange,
-  selectedFace,
-  onFaceSelect,
-  faceStyle,
-  onFaceStyleChange,
-  debugMode,
-  onDebugToggle,
-  showBackground,
-  onBackgroundToggle,
-  onResetCamera,
-  envMapQuality,
-  onEnvMapQualityChange,
-}: ControlsProps) {
+export function Controls() {
+  // Get state and actions from context
+  const { state, actions } = useRenderer();
+
+  // Destructure for convenience
+  const { materialType, selectedFace, faceStyle, debugMode, showBackground, envMapQuality } = state;
+  const {
+    setMaterialType,
+    setFaceStyle,
+    setSelectedFace,
+    setDebugMode,
+    setBackgroundVisible,
+    setEnvMapQuality,
+    resetCamera,
+  } = actions;
+
   return (
     <div className="controls">
       <div className="logo-section">
@@ -47,13 +33,13 @@ export function Controls({
         <div className="button-group">
           <button
             className={materialType === 'basic' ? 'active' : ''}
-            onClick={() => onMaterialTypeChange('basic')}
+            onClick={() => setMaterialType('basic')}
           >
             Basic
           </button>
           <button
             className={materialType === 'pbr' ? 'active' : ''}
-            onClick={() => onMaterialTypeChange('pbr')}
+            onClick={() => setMaterialType('pbr')}
           >
             PBR
           </button>
@@ -65,7 +51,7 @@ export function Controls({
         <div className="button-group">
           <button
             className={debugMode ? 'active' : ''}
-            onClick={onDebugToggle}
+            onClick={() => setDebugMode(!debugMode)}
           >
             {debugMode ? 'ON' : 'OFF'}
           </button>
@@ -77,7 +63,7 @@ export function Controls({
         <div className="button-group">
           <button
             className={showBackground ? 'active' : ''}
-            onClick={onBackgroundToggle}
+            onClick={() => setBackgroundVisible(!showBackground)}
           >
             {showBackground ? 'ENV MAP' : 'DARK'}
           </button>
@@ -89,19 +75,19 @@ export function Controls({
         <div className="button-group">
           <button
             className={envMapQuality === '1k' ? 'active' : ''}
-            onClick={() => onEnvMapQualityChange('1k')}
+            onClick={() => setEnvMapQuality('1k')}
           >
             1K
           </button>
           <button
             className={envMapQuality === '2k' ? 'active' : ''}
-            onClick={() => onEnvMapQualityChange('2k')}
+            onClick={() => setEnvMapQuality('2k')}
           >
             2K
           </button>
           <button
             className={envMapQuality === '4k' ? 'active' : ''}
-            onClick={() => onEnvMapQualityChange('4k')}
+            onClick={() => setEnvMapQuality('4k')}
           >
             4K
           </button>
@@ -111,7 +97,7 @@ export function Controls({
       <div className="controls-section">
         <h3>Camera</h3>
         <div className="button-group">
-          <button onClick={onResetCamera}>
+          <button onClick={resetCamera}>
             Reset Position
           </button>
         </div>
@@ -124,7 +110,7 @@ export function Controls({
             <div className="button-group face-grid">
               <button
                 className={selectedFace === null ? 'active' : ''}
-                onClick={() => onFaceSelect(null)}
+                onClick={() => setSelectedFace(null)}
               >
                 All Faces
               </button>
@@ -132,7 +118,7 @@ export function Controls({
                 <button
                   key={index}
                   className={selectedFace === index ? 'active' : ''}
-                  onClick={() => onFaceSelect(index as FaceIndex)}
+                  onClick={() => setSelectedFace(index as FaceIndex)}
                 >
                   {name}
                 </button>
@@ -147,7 +133,7 @@ export function Controls({
                 <button
                   key={style}
                   className={faceStyle === style ? 'active' : ''}
-                  onClick={() => onFaceStyleChange(style)}
+                  onClick={() => setFaceStyle(style)}
                 >
                   {style.charAt(0).toUpperCase() + style.slice(1)}
                 </button>

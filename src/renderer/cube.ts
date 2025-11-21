@@ -4,7 +4,7 @@ export function createCube(): THREE.Mesh {
   const geometry = new THREE.BoxGeometry(2, 2, 2);
 
   // Create 6 materials for each face
-  const materials = Array.from({ length: 6 }, (_, i) =>
+  const materials = Array.from({ length: 6 }, () =>
     new THREE.MeshStandardMaterial({
       color: 0x00aaff,
       roughness: 0.5,
