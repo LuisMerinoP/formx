@@ -1,6 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
-import type { MaterialType, FaceIndex, FaceStyle, EnvMapQuality } from '../types';
+import type { MaterialType, FaceIndex, FaceStyle, EnvMapQuality } from '../renderer/types';
 
 interface CubeState {
   materialType: MaterialType;

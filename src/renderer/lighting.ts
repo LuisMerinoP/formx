@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js';
-import type { EnvMapQuality } from '../types';
+import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
+import type { EnvMapQuality } from './types';
 
 export async function setupLighting(
   scene: THREE.Scene,
@@ -17,11 +17,11 @@ export async function setupLighting(
     scene.add(directionalLight);
   }
 
-  const exrLoader = new EXRLoader();
-  const envMapPath = `/src/assets/golden_gate_hills_${quality}.exr`;
+  const hdrLoader = new HDRLoader();
+  const envMapPath = `/src/assets/golden_gate_hills_${quality}.hdr`;
 
   return new Promise((resolve) => {
-    exrLoader.load(
+    hdrLoader.load(
       envMapPath,
       (texture) => {
         texture.mapping = THREE.EquirectangularReflectionMapping;

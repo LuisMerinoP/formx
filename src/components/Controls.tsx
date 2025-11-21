@@ -1,4 +1,4 @@
-import type { FaceIndex, FaceStyle } from '../types';
+import type { FaceIndex, FaceStyle } from '../renderer/types';
 import { useRenderer } from '../contexts/RendererContext';
 import formxLogo from '../assets/formx.svg';
 import './Controls.css';

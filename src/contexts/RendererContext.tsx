@@ -12,7 +12,7 @@ import {
   triggerResetCamera as triggerResetCameraAction,
   resetCameraComplete,
 } from '../store/cubeSlice';
-import type { MaterialType, FaceIndex, FaceStyle, EnvMapQuality } from '../types';
+import type { MaterialType, FaceIndex, FaceStyle, EnvMapQuality } from '../renderer/types';
 
 interface RendererContextValue {
   state: {

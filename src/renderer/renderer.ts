@@ -3,7 +3,7 @@ import { createCube } from './cube';
 import { setupLighting } from './lighting';
 import { createControls } from './controls';
 import { createFaceLabels } from './faceLabels';
-import type { MaterialType, FaceIndex, FaceStyle, EnvMapQuality } from '../types';
+import type { MaterialType, FaceIndex, FaceStyle, EnvMapQuality } from './types';
 
 interface RendererConfig {
   initialState?: {
