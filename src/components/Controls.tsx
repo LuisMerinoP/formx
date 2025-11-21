@@ -1,4 +1,4 @@
-import type { MaterialType, FaceIndex, FaceStyle } from '../types';
+import type { MaterialType, FaceIndex, FaceStyle, EnvMapQuality } from '../types';
 import formxLogo from '../assets/formx.svg';
 import './Controls.css';
 
@@ -14,6 +14,8 @@ interface ControlsProps {
   showBackground: boolean;
   onBackgroundToggle: () => void;
   onResetCamera: () => void;
+  envMapQuality: EnvMapQuality;
+  onEnvMapQualityChange: (quality: EnvMapQuality) => void;
 }
 
 const FACE_NAMES = ['Right', 'Left', 'Top', 'Bottom', 'Front', 'Back'];
@@ -31,6 +33,8 @@ export function Controls({
   showBackground,
   onBackgroundToggle,
   onResetCamera,
+  envMapQuality,
+  onEnvMapQualityChange,
 }: ControlsProps) {
   return (
     <div className="controls">
@@ -81,12 +85,33 @@ export function Controls({
       </div>
 
       <div className="controls-section">
+        <h3>Env Map Quality</h3>
+        <div className="button-group">
+          <button
+            className={envMapQuality === '1k' ? 'active' : ''}
+            onClick={() => onEnvMapQualityChange('1k')}
+          >
+            1K
+          </button>
+          <button
+            className={envMapQuality === '2k' ? 'active' : ''}
+            onClick={() => onEnvMapQualityChange('2k')}
+          >
+            2K
+          </button>
+          <button
+            className={envMapQuality === '4k' ? 'active' : ''}
+            onClick={() => onEnvMapQualityChange('4k')}
+          >
+            4K
+          </button>
+        </div>
+      </div>
+
+      <div className="controls-section">
         <h3>Camera</h3>
         <div className="button-group">
-          <button onClick={() => {
-            console.log('Reset camera button clicked');
-            onResetCamera();
-          }}>
+          <button onClick={onResetCamera}>
             Reset Position
           </button>
         </div>

@@ -1,6 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
-import type { MaterialType, FaceIndex, FaceStyle } from '../types';
+import type { MaterialType, FaceIndex, FaceStyle, EnvMapQuality } from '../types';
 
 interface CubeState {
   materialType: MaterialType;
@@ -9,6 +9,7 @@ interface CubeState {
   debugMode: boolean;
   showBackground: boolean;
   resetCamera: boolean;
+  envMapQuality: EnvMapQuality;
 }
 
 const initialState: CubeState = {
@@ -18,6 +19,7 @@ const initialState: CubeState = {
   debugMode: false,
   showBackground: true,
   resetCamera: false,
+  envMapQuality: '1k',
 };
 
 const cubeSlice = createSlice({
@@ -40,15 +42,16 @@ const cubeSlice = createSlice({
       state.showBackground = !state.showBackground;
     },
     triggerResetCamera: (state) => {
-      console.log('Redux: triggerResetCamera action dispatched');
       state.resetCamera = true;
     },
     resetCameraComplete: (state) => {
-      console.log('Redux: resetCameraComplete action dispatched');
       state.resetCamera = false;
+    },
+    setEnvMapQuality: (state, action: PayloadAction<EnvMapQuality>) => {
+      state.envMapQuality = action.payload;
     },
   },
 });
 
-export const { setMaterialType, setSelectedFace, setFaceStyle, toggleDebugMode, toggleBackground, triggerResetCamera, resetCameraComplete } = cubeSlice.actions;
+export const { setMaterialType, setSelectedFace, setFaceStyle, toggleDebugMode, toggleBackground, triggerResetCamera, resetCameraComplete, setEnvMapQuality } = cubeSlice.actions;
 export default cubeSlice.reducer;

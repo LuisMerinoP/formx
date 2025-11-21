@@ -4,7 +4,7 @@ import { createCube } from '../renderer/cube';
 import { setupLighting } from '../renderer/lighting';
 import { createControls } from '../renderer/controls';
 import { createFaceLabels } from '../renderer/faceLabels';
-import type { MaterialType, FaceIndex } from '../types';
+import type { MaterialType, FaceIndex, EnvMapQuality } from '../types';
 
 interface SceneProps {
   materialType: MaterialType;
@@ -13,10 +13,11 @@ interface SceneProps {
   debugMode: boolean;
   showBackground: boolean;
   resetCamera: boolean;
+  envMapQuality: EnvMapQuality;
   onResetCameraComplete: () => void;
 }
 
-export function Scene({ materialType, selectedFace, faceStyle, debugMode, showBackground, resetCamera, onResetCameraComplete }: SceneProps) {
+export function Scene({ materialType, selectedFace, faceStyle, debugMode, showBackground, resetCamera, envMapQuality, onResetCameraComplete }: SceneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -85,7 +86,7 @@ export function Scene({ materialType, selectedFace, faceStyle, debugMode, showBa
     animate();
 
     // Setup lighting async (loads environment map)
-    setupLighting(scene, renderer).then((envMap) => {
+    setupLighting(scene, renderer, envMapQuality).then((envMap) => {
       if (envMap) {
         envMapRef.current = envMap;
       }
@@ -126,18 +127,53 @@ export function Scene({ materialType, selectedFace, faceStyle, debugMode, showBa
     }
   }, [showBackground]);
 
+  // Reload environment map when quality changes
+  useEffect(() => {
+    if (sceneRef.current && rendererRef.current) {
+      console.log(`Loading ${envMapQuality} environment map...`);
+
+      // Dispose old environment map
+      if (envMapRef.current) {
+        envMapRef.current.dispose();
+      }
+
+      // Load new environment map with selected quality (skip adding lights again)
+      setupLighting(sceneRef.current, rendererRef.current, envMapQuality, true).then((envMap) => {
+        if (envMap) {
+          envMapRef.current = envMap;
+
+          // Update scene with new environment map
+          if (sceneRef.current) {
+            sceneRef.current.environment = showBackground ? envMap : null;
+            sceneRef.current.background = showBackground ? envMap : null;
+          }
+
+          // Force material update to use new environment map
+          if (cubeRef.current) {
+            const materials = Array.isArray(cubeRef.current.material)
+              ? cubeRef.current.material
+              : [cubeRef.current.material];
+
+            materials.forEach((material) => {
+              material.needsUpdate = true;
+            });
+          }
+
+          console.log(`${envMapQuality} environment map loaded successfully`);
+        }
+      });
+    }
+  }, [envMapQuality, showBackground]);
+
   // Reset camera position when requested
   useEffect(() => {
-    console.log('Reset camera effect triggered, resetCamera:', resetCamera);
     if (resetCamera && cameraRef.current) {
-      console.log('Resetting camera position to (0, 0, 7)');
       // Reset to default position
       cameraRef.current.position.set(0, 0, 7);
       cameraRef.current.lookAt(0, 0, 0);
 
       // Notify that reset is complete
       onResetCameraComplete();
-      console.log('Camera reset complete');
     }
   }, [resetCamera, onResetCameraComplete]);
 
