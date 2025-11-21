@@ -12,9 +12,11 @@ interface SceneProps {
   faceStyle: string;
   debugMode: boolean;
   showBackground: boolean;
+  resetCamera: boolean;
+  onResetCameraComplete: () => void;
 }
 
-export function Scene({ materialType, selectedFace, faceStyle, debugMode, showBackground }: SceneProps) {
+export function Scene({ materialType, selectedFace, faceStyle, debugMode, showBackground, resetCamera, onResetCameraComplete }: SceneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -123,6 +125,21 @@ export function Scene({ materialType, selectedFace, faceStyle, debugMode, showBa
       sceneRef.current.environment = showBackground ? envMapRef.current : null;
     }
   }, [showBackground]);
+
+  // Reset camera position when requested
+  useEffect(() => {
+    console.log('Reset camera effect triggered, resetCamera:', resetCamera);
+    if (resetCamera && cameraRef.current) {
+      console.log('Resetting camera position to (0, 0, 7)');
+      // Reset to default position
+      cameraRef.current.position.set(0, 0, 7);
+      cameraRef.current.lookAt(0, 0, 0);
+
+      // Notify that reset is complete
+      onResetCameraComplete();
+      console.log('Camera reset complete');
+    }
+  }, [resetCamera, onResetCameraComplete]);
 
   // Update materials when props change
   useEffect(() => {

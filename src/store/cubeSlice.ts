@@ -8,6 +8,7 @@ interface CubeState {
   faceStyle: FaceStyle;
   debugMode: boolean;
   showBackground: boolean;
+  resetCamera: boolean;
 }
 
 const initialState: CubeState = {
@@ -16,6 +17,7 @@ const initialState: CubeState = {
   faceStyle: 'wood',
   debugMode: false,
   showBackground: true,
+  resetCamera: false,
 };
 
 const cubeSlice = createSlice({
@@ -37,8 +39,16 @@ const cubeSlice = createSlice({
     toggleBackground: (state) => {
       state.showBackground = !state.showBackground;
     },
+    triggerResetCamera: (state) => {
+      console.log('Redux: triggerResetCamera action dispatched');
+      state.resetCamera = true;
+    },
+    resetCameraComplete: (state) => {
+      console.log('Redux: resetCameraComplete action dispatched');
+      state.resetCamera = false;
+    },
   },
 });
 
-export const { setMaterialType, setSelectedFace, setFaceStyle, toggleDebugMode, toggleBackground } = cubeSlice.actions;
+export const { setMaterialType, setSelectedFace, setFaceStyle, toggleDebugMode, toggleBackground, triggerResetCamera, resetCameraComplete } = cubeSlice.actions;
 export default cubeSlice.reducer;

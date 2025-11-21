@@ -13,6 +13,7 @@ interface ControlsProps {
   onDebugToggle: () => void;
   showBackground: boolean;
   onBackgroundToggle: () => void;
+  onResetCamera: () => void;
 }
 
 const FACE_NAMES = ['Right', 'Left', 'Top', 'Bottom', 'Front', 'Back'];
@@ -29,6 +30,7 @@ export function Controls({
   onDebugToggle,
   showBackground,
   onBackgroundToggle,
+  onResetCamera,
 }: ControlsProps) {
   return (
     <div className="controls">
@@ -78,6 +80,18 @@ export function Controls({
         </div>
       </div>
 
+      <div className="controls-section">
+        <h3>Camera</h3>
+        <div className="button-group">
+          <button onClick={() => {
+            console.log('Reset camera button clicked');
+            onResetCamera();
+          }}>
+            Reset Position
+          </button>
+        </div>
+      </div>
+
       {materialType === 'pbr' && (
         <>
           <div className="controls-section">
@@ -120,8 +134,7 @@ export function Controls({
 
       <div className="controls-section help">
         <p>
-          <strong>Controls:</strong> Drag to rotate • Arrow keys/WASD • R to
-          toggle auto-rotate
+          <strong>Controls:</strong> Drag to rotate • Arrow keys/WASD to move • Mouse wheel to zoom • R to toggle auto-rotate
         </p>
       </div>
     </div>
