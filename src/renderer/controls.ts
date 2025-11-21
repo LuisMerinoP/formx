@@ -27,6 +27,15 @@ export function createControls(
   // Track pressed keys for continuous movement
   const keysPressed = new Set<string>();
 
+  // Reusable workspace objects to avoid garbage collection pressure
+  const workspace = {
+    mouse: new THREE.Vector2(),
+    raycaster: new THREE.Raycaster(),
+    forward: new THREE.Vector3(),
+    right: new THREE.Vector3(),
+    direction: new THREE.Vector3(),
+  };
+
   // Make sure canvas can receive focus
   if (domElement instanceof HTMLCanvasElement) {
     domElement.tabIndex = 1;
@@ -105,19 +114,17 @@ export function createControls(
 
     // Get mouse position in normalized device coordinates (-1 to +1)
     const rect = domElement.getBoundingClientRect();
-    const mouse = new THREE.Vector2();
-    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    workspace.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    workspace.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
-    // Create a raycaster to find the direction from camera through mouse position
-    const raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera(mouse, camera);
+    // Use raycaster to find the direction from camera through mouse position
+    workspace.raycaster.setFromCamera(workspace.mouse, camera);
 
     // Get the direction vector (where the mouse is pointing in 3D space)
-    const direction = raycaster.ray.direction.clone().normalize();
+    workspace.direction.copy(workspace.raycaster.ray.direction).normalize();
 
     // Move camera along this direction
-    camera.position.addScaledVector(direction, -delta);
+    camera.position.addScaledVector(workspace.direction, -delta);
   }
 
   // Keyboard events - track key state for continuous movement
@@ -170,25 +177,24 @@ export function createControls(
       // Handle continuous movement based on pressed keys
       if (keysPressed.size > 0) {
         const moveSpeed = 0.1;
-        const forward = new THREE.Vector3();
-        const right = new THREE.Vector3();
 
-        camera.getWorldDirection(forward);
-        right.crossVectors(camera.up, forward).normalize();
+        // Reuse workspace vectors instead of creating new ones every frame
+        camera.getWorldDirection(workspace.forward);
+        workspace.right.crossVectors(camera.up, workspace.forward).normalize();
 
         // Check each possible key
         keysPressed.forEach((keyOrCode) => {
           if (keyOrCode === 'w' || keyOrCode === 'arrowup' || keyOrCode === 'KeyW') {
-            camera.position.addScaledVector(forward, moveSpeed);
+            camera.position.addScaledVector(workspace.forward, moveSpeed);
           }
           if (keyOrCode === 's' || keyOrCode === 'arrowdown' || keyOrCode === 'KeyS') {
-            camera.position.addScaledVector(forward, -moveSpeed);
+            camera.position.addScaledVector(workspace.forward, -moveSpeed);
           }
           if (keyOrCode === 'a' || keyOrCode === 'arrowleft' || keyOrCode === 'KeyA') {
-            camera.position.addScaledVector(right, -moveSpeed);
+            camera.position.addScaledVector(workspace.right, -moveSpeed);
           }
           if (keyOrCode === 'd' || keyOrCode === 'arrowright' || keyOrCode === 'KeyD') {
-            camera.position.addScaledVector(right, moveSpeed);
+            camera.position.addScaledVector(workspace.right, moveSpeed);
           }
         });
       }
