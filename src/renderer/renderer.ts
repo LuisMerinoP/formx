@@ -81,9 +81,13 @@ export class Renderer implements IRenderer {
   private usingWebGPU = false;
   private lights: THREE.Light[] = [];
 
-  private animationId: number | null = null;
   private eventListeners: Map<string, Set<EventCallback>> = new Map();
   private currentFps = 0;
+  private renderRequested = false;
+  private lastFrameTime = 0;
+  private frameCount = 0;
+  private animationId: number | null = null;
+  private isInitialized = false;
 
   private constructor() {}
 
@@ -151,7 +155,7 @@ export class Renderer implements IRenderer {
       this.cube = createCube();
       this.scene.add(this.cube);
 
-      this.controls = createControls(this.cube, canvas, this.camera);
+      this.controls = createControls(this.cube, canvas, this.camera, () => this.requestRender());
       canvas.focus();
 
       // Create TransformControls for debug visualization
@@ -161,6 +165,11 @@ export class Renderer implements IRenderer {
       this.transformControls.space = 'world';
       this.transformControls.setMode('translate');
       this.transformControls.enabled = debugMode;
+
+      // Request render when transform controls are being used
+      this.transformControls.addEventListener('change', () => this.requestRender());
+      this.transformControls.addEventListener('dragging-changed', () => this.requestRender());
+
       if (debugMode) {
         const gizmo = this.transformControls.getHelper();
         this.scene.add(gizmo);
@@ -179,12 +188,18 @@ export class Renderer implements IRenderer {
       // Apply the initial environment map quality
       await this.loadEnvironmentMap(envMapQuality, true);
 
-      this.emit('progress', { type: 'progress', progress: 95, message: 'Starting animation...' });
-      // Start animation loop
-      this.start();
+      this.emit('progress', { type: 'progress', progress: 95, message: 'Starting render loop...' });
+
+      this.isInitialized = true;
+
+      // Start render loop (for controls update and render-on-demand)
+      this.startRenderLoop();
 
       this.emit('progress', { type: 'progress', progress: 100, message: 'Ready!' });
       this.emit('ready', { type: 'empty' });
+
+      // Initial render
+      this.requestRender();
     } catch (error) {
       this.emit('error', { type: 'error', message: 'Initialization failed', error });
       throw error;
@@ -192,7 +207,8 @@ export class Renderer implements IRenderer {
   }
 
   dispose(): void {
-    this.stop();
+    this.isInitialized = false;
+    this.stopRenderLoop();
 
     if (this.controls) {
       this.controls.dispose();
@@ -226,14 +242,18 @@ export class Renderer implements IRenderer {
     if (this.renderer) {
       this.renderer.setSize(width, height);
     }
+
+    this.requestRender();
   }
 
   setMaterialType(type: MaterialType, faceStyle: FaceStyle, face?: FaceIndex | null): void {
     this.updateMaterials(type, faceStyle, face);
+    this.requestRender();
   }
 
   setFaceStyle(type: MaterialType, style: FaceStyle, face?: FaceIndex | null): void {
     this.updateMaterials(type, style, face);
+    this.requestRender();
   }
 
   setSelectedFace(_face: FaceIndex | null): void {
@@ -261,21 +281,26 @@ export class Renderer implements IRenderer {
     if (this.faceLabels) {
       this.faceLabels.visible = enabled;
     }
+
+    this.requestRender();
   }
 
   setTransformMode(mode: TransformMode): void {
     if (this.transformControls) {
       this.transformControls.setMode(mode);
     }
+    this.requestRender();
   }
 
   setBackgroundVisible(visible: boolean, envMapQuality: EnvMapQuality): void {
     // Re-apply the current environment map with new visibility setting
     this.loadEnvironmentMap(envMapQuality, visible);
+    this.requestRender();
   }
 
   setEnvMapQuality(quality: EnvMapQuality, showBackground: boolean): void {
     this.loadEnvironmentMap(quality, showBackground);
+    this.requestRender();
   }
 
   resetCamera(): void {
@@ -292,6 +317,7 @@ export class Renderer implements IRenderer {
     }
 
     this.emit('cameraReset', { type: 'empty' });
+    this.requestRender();
   }
 
   getFPS(): number {
@@ -316,41 +342,48 @@ export class Renderer implements IRenderer {
     }
   }
 
-  private start(): void {
+  private requestRender(): void {
+    this.renderRequested = true;
+  }
+
+  private updateFPS(): void {
+    const targetFrames = 30;
+    const now = performance.now();
+    this.frameCount++;
+
+    if (this.frameCount >= targetFrames) {
+      const deltaTime = now - this.lastFrameTime;
+      this.currentFps = Math.round((this.frameCount * 1000) / deltaTime);
+      this.lastFrameTime = now;
+      this.frameCount = 0;
+    }
+  }
+
+  private startRenderLoop(): void {
     if (this.animationId !== null) return;
 
-    // FPS monitoring
-    let lastFrameTime = performance.now();
-    let frameCount = 0;
-    const targetFrames = 30; // Update FPS every 30 frames
+    const loop = () => {
+      this.animationId = requestAnimationFrame(loop);
 
-    const animate = () => {
-      this.animationId = requestAnimationFrame(animate);
+      if (!this.isInitialized) return;
+      if (!this.renderRequested) return;
 
-      // Calculate FPS every N frames
-      const now = performance.now();
-      frameCount++;
+      this.renderer!.render(this.scene!, this.camera!);
+      this.renderRequested = false;
 
-      if (frameCount >= targetFrames) {
-        const deltaTime = now - lastFrameTime;
-        this.currentFps = Math.round((frameCount * 1000) / deltaTime);
-        lastFrameTime = now;
-        frameCount = 0;
-      }
+      this.updateFPS();
 
+      // Will requestRender of the next frame on demand.
       if (this.controls) {
         this.controls.update();
       }
-
-      if (this.renderer && this.scene && this.camera) {
-        this.renderer.render(this.scene, this.camera);
-      }
     };
 
-    animate();
+    this.lastFrameTime = performance.now();
+    loop();
   }
 
-  private stop(): void {
+  private stopRenderLoop(): void {
     if (this.animationId !== null) {
       cancelAnimationFrame(this.animationId);
       this.animationId = null;

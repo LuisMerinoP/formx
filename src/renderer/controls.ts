@@ -16,7 +16,8 @@ const MOVE_SPEED = 0.1;
 export function createControls(
   mesh: THREE.Mesh,
   domElement: HTMLElement,
-  camera: THREE.Camera
+  camera: THREE.Camera,
+  onNeedRender: () => void
 ): Controls {
   let isDragging = false;
   let previousMousePosition = { x: 0, y: 0 };
@@ -75,6 +76,8 @@ export function createControls(
       x: event.clientX,
       y: event.clientY,
     };
+
+    onNeedRender();
   }
 
   function onMouseUp() {
@@ -107,6 +110,8 @@ export function createControls(
       x: event.touches[0].clientX,
       y: event.touches[0].clientY,
     };
+
+    onNeedRender();
   }
 
   function onTouchEnd() {
@@ -132,6 +137,8 @@ export function createControls(
 
     // Move camera along this direction
     camera.position.addScaledVector(workspace.direction, -delta);
+
+    onNeedRender();
   }
 
   // Keyboard events - track key state for continuous movement
@@ -194,9 +201,10 @@ export function createControls(
       controlsState.enabled = value;
     },
     update: () => {
+      let needsRender = false;
+
       // Handle continuous movement based on pressed keys (always enabled)
       if (keysPressed.size > 0) {
-
         // Reuse workspace vectors instead of creating new ones every frame
         camera.getWorldDirection(workspace.forward);
         workspace.right.crossVectors(camera.up, workspace.forward).normalize();
@@ -216,11 +224,17 @@ export function createControls(
             camera.position.addScaledVector(workspace.right, -MOVE_SPEED);
           }
         });
+        needsRender = true;
       }
 
       // Auto-rotate mesh (only when mouse controls are enabled)
       if (autoRotate && controlsState.enabled) {
         mesh.rotation.y += AUTO_ROTATE_SPEED;
+        needsRender = true;
+      }
+
+      if (needsRender) {
+        onNeedRender();
       }
     },
     dispose: () => {
