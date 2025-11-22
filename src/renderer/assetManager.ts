@@ -41,17 +41,16 @@ interface MaterialConfig {
  * foundation for scaling to more complex scenarios.
  */
 export class AssetManager {
-  private envMaps: Map<EnvMapQuality, EnvMapAsset> = new Map();
-  private pmremGenerator: THREE.PMREMGenerator | null = null;
-  private scene: THREE.Scene;
-  private isWebGPU: boolean;
+  private readonly scene: THREE.Scene;
+  private readonly isWebGPU: boolean;
+  private readonly pmremGenerator: THREE.PMREMGenerator | null = null;
+  private readonly materials: Map<string, THREE.MeshStandardMaterial> = new Map();
+  private readonly envMaps: Map<EnvMapQuality, EnvMapAsset> = new Map();
+
   private isInitialized = false;
 
-  // Pre-instantiated material library
-  private materials: Map<string, THREE.MeshStandardMaterial> = new Map();
-
   // Material configuration presets
-  private readonly materialConfigs: Record<FaceStyle, MaterialConfig> = {
+  private static readonly MATERIAL_CONFIGS: Record<FaceStyle, MaterialConfig> = {
     wood: { roughness: 0.8, metalness: 0, color: 0x8B4513 },
     glass: { roughness: 0.05, metalness: 0, color: 0x87CEEB },
     fur: { roughness: 0.9, metalness: 0, color: 0xD2691E },
@@ -183,7 +182,7 @@ export class AssetManager {
 
   /**
    * Pre-instantiate all material combinations.
-   * Creates materials for: 2 types (basic/pbr) × 5 styles = 10 materials
+   * Creates materials for: 2 types (basic/pbr) × 6 styles = 12 materials
    */
   private initializeMaterials(): void {
     const materialTypes: MaterialType[] = ['basic', 'pbr'];
@@ -193,7 +192,7 @@ export class AssetManager {
       faceStyles.forEach(style => {
         const key = this.getMaterialKey(type, style);
         const config = type === 'pbr'
-          ? this.materialConfigs[style]
+          ? AssetManager.MATERIAL_CONFIGS[style]
           : { roughness: 0.5, metalness: 0, color: 0x00aaff }; // Basic material defaults
 
         const material = new THREE.MeshStandardMaterial({

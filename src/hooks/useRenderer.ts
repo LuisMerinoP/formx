@@ -4,6 +4,8 @@ import * as rendererActions from '../store/rendererSlice';
 import { Renderer } from '../renderer/renderer';
 import type { MaterialType, FaceIndex, FaceStyle, EnvMapQuality, TransformMode } from '../renderer/types';
 
+const FPS_POLL_INTERVAL = 500;
+
 export function useRenderer() {
   const dispatch = useAppDispatch();
   const rendererState = useAppSelector((state) => state.renderer);
@@ -11,12 +13,12 @@ export function useRenderer() {
   const [fps, setFps] = useState(0);
   const [isWebGPU, setIsWebGPU] = useState(false);
 
-  // Poll FPS and WebGPU status every 500ms
+  // Poll FPS and WebGPU status
   useEffect(() => {
     const interval = setInterval(() => {
       setFps(renderer.getFPS());
       setIsWebGPU(renderer.isWebGPU());
-    }, 500);
+    }, FPS_POLL_INTERVAL);
     return () => clearInterval(interval);
   }, [renderer]);
 

@@ -7,6 +7,12 @@ interface Controls {
   keyboardEnabled: boolean;
 }
 
+// Configuration constants
+const ROTATION_SPEED = 0.005;
+const AUTO_ROTATE_SPEED = 0.005;
+const ZOOM_SPEED = 0.001;
+const MOVE_SPEED = 0.1;
+
 export function createControls(
   mesh: THREE.Mesh,
   domElement: HTMLElement,
@@ -14,11 +20,7 @@ export function createControls(
 ): Controls {
   let isDragging = false;
   let previousMousePosition = { x: 0, y: 0 };
-  const rotationSpeed = 0.005;
-
-  // Auto-rotation
   let autoRotate = true;
-  const autoRotateSpeed = 0.005;
 
   // Camera look direction (independent of position)
   const lookTarget = new THREE.Vector3();
@@ -66,8 +68,8 @@ export function createControls(
     const deltaX = event.clientX - previousMousePosition.x;
     const deltaY = event.clientY - previousMousePosition.y;
 
-    mesh.rotation.y += deltaX * rotationSpeed;
-    mesh.rotation.x += deltaY * rotationSpeed;
+    mesh.rotation.y += deltaX * ROTATION_SPEED;
+    mesh.rotation.x += deltaY * ROTATION_SPEED;
 
     previousMousePosition = {
       x: event.clientX,
@@ -98,8 +100,8 @@ export function createControls(
     const deltaX = event.touches[0].clientX - previousMousePosition.x;
     const deltaY = event.touches[0].clientY - previousMousePosition.y;
 
-    mesh.rotation.y += deltaX * rotationSpeed;
-    mesh.rotation.x += deltaY * rotationSpeed;
+    mesh.rotation.y += deltaX * ROTATION_SPEED;
+    mesh.rotation.x += deltaY * ROTATION_SPEED;
 
     previousMousePosition = {
       x: event.touches[0].clientX,
@@ -115,8 +117,7 @@ export function createControls(
   function onWheel(event: WheelEvent) {
     event.preventDefault();
 
-    const zoomSpeed = 0.001;
-    const delta = event.deltaY * zoomSpeed;
+    const delta = event.deltaY * ZOOM_SPEED;
 
     // Get mouse position in normalized device coordinates (-1 to +1)
     const rect = domElement.getBoundingClientRect();
@@ -195,7 +196,6 @@ export function createControls(
     update: () => {
       // Handle continuous movement based on pressed keys (always enabled)
       if (keysPressed.size > 0) {
-        const moveSpeed = 0.1;
 
         // Reuse workspace vectors instead of creating new ones every frame
         camera.getWorldDirection(workspace.forward);
@@ -204,23 +204,23 @@ export function createControls(
         // Check each possible key
         keysPressed.forEach((keyOrCode) => {
           if (keyOrCode === 'w' || keyOrCode === 'arrowup' || keyOrCode === 'KeyW') {
-            camera.position.addScaledVector(workspace.forward, moveSpeed);
+            camera.position.addScaledVector(workspace.forward, MOVE_SPEED);
           }
           if (keyOrCode === 's' || keyOrCode === 'arrowdown' || keyOrCode === 'KeyS') {
-            camera.position.addScaledVector(workspace.forward, -moveSpeed);
+            camera.position.addScaledVector(workspace.forward, -MOVE_SPEED);
           }
           if (keyOrCode === 'a' || keyOrCode === 'arrowleft' || keyOrCode === 'KeyA') {
-            camera.position.addScaledVector(workspace.right, moveSpeed);
+            camera.position.addScaledVector(workspace.right, MOVE_SPEED);
           }
           if (keyOrCode === 'd' || keyOrCode === 'arrowright' || keyOrCode === 'KeyD') {
-            camera.position.addScaledVector(workspace.right, -moveSpeed);
+            camera.position.addScaledVector(workspace.right, -MOVE_SPEED);
           }
         });
       }
 
       // Auto-rotate mesh (only when mouse controls are enabled)
       if (autoRotate && controlsState.enabled) {
-        mesh.rotation.y += autoRotateSpeed;
+        mesh.rotation.y += AUTO_ROTATE_SPEED;
       }
     },
     dispose: () => {

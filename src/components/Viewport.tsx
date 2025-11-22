@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAppSelector } from "../store/hooks";
 import { Renderer, type ProgressData, type EventData } from "../renderer/renderer";
+import "./Viewport.css";
 
 export function Viewport() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -18,32 +19,33 @@ export function Viewport() {
     console.log('Viewport: Starting renderer initialization');
     const renderer = Renderer.getInstance();
 
-    // Subscribe to progress events
+    // Subscribe to events
     const handleProgress = (data: EventData) => {
       if (data.type === 'progress') {
         setProgress(data);
       }
     };
 
-    renderer.on('progress', handleProgress);
+    const handleReady = () => {
+      console.log('Viewport: Renderer ready');
+      setIsLoading(false);
+    };
 
-    // Initialize renderer with initial state from Redux
-    const initializeRenderer = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        console.log('Viewport: Calling renderer.initialize()');
-        await renderer.initialize(containerRef.current!, debugMode, envMapQuality);
-        console.log('Viewport: Renderer initialized successfully');
-        setIsLoading(false);
-      } catch (err) {
-        console.error('Viewport: Renderer initialization failed', err);
-        setError(err instanceof Error ? err.message : "Failed to initialize renderer");
+    const handleError = (data: EventData) => {
+      if (data.type === 'error') {
+        console.error('Viewport: Renderer error', data.error);
+        setError(data.message);
         setIsLoading(false);
       }
     };
 
-    initializeRenderer();
+    renderer.on('progress', handleProgress);
+    renderer.on('ready', handleReady);
+    renderer.on('error', handleError);
+
+    // Initialize renderer (no need to await, we handle completion via events)
+    console.log('Viewport: Starting renderer initialization');
+    renderer.initialize(containerRef.current!, debugMode, envMapQuality);
 
     // Handle window resize
     const handleResize = () => {
@@ -54,81 +56,38 @@ export function Viewport() {
     return () => {
       console.log('Viewport: Cleaning up');
       renderer.off('progress', handleProgress);
+      renderer.off('ready', handleReady);
+      renderer.off('error', handleError);
       window.removeEventListener("resize", handleResize);
       renderer.dispose();
     };
   }, []);
 
   return (
-    <div style={{ width: "100%", height: "100%", position: "relative" }}>
-      <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
+    <div className="viewport-container">
+      <div ref={containerRef} className="viewport-canvas" />
 
       {error && (
-        <div style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: "#1a1a1a",
-          color: "#ff4444",
-          fontSize: "14px",
-          fontFamily: "monospace",
-        }}>
+        <div className="viewport-overlay viewport-error">
           Error: {error}
         </div>
       )}
 
       {isLoading && (
-        <div style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: "#1a1a1a",
-        }}>
-          <div style={{
-            width: "300px",
-            maxWidth: "80%",
-            textAlign: "center",
-          }}>
-            <div style={{
-              fontSize: "12px",
-              color: "#888",
-              marginBottom: "8px",
-              fontFamily: "monospace",
-            }}>
+        <div className="viewport-overlay">
+          <div className="viewport-progress">
+            <div className="viewport-progress-message">
               {progress.message}
             </div>
 
-            <div style={{
-              width: "100%",
-              height: "4px",
-              backgroundColor: "#333",
-              borderRadius: "2px",
-              overflow: "hidden",
-            }}>
-              <div style={{
-                width: `${progress.progress}%`,
-                height: "100%",
-                backgroundColor: "#fff",
-                transition: "width 0.3s ease",
-              }} />
+            <div className="viewport-progress-bar">
+              <div
+                className="viewport-progress-fill"
+                style={{ width: `${progress.progress}%` }}
+              />
             </div>
 
-            <div style={{
-              fontSize: "11px",
-              color: "#666",
-              marginTop: "4px",
-              fontFamily: "monospace",
-            }}>
+            <div className="viewport-progress-percent">
               {progress.progress}%
             </div>
           </div>

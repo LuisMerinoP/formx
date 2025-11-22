@@ -8,11 +8,6 @@ import { createFaceLabels } from './faceLabels';
 import { AssetManager } from './assetManager';
 import type { MaterialType, FaceIndex, FaceStyle, EnvMapQuality, TransformMode } from './types';
 
-// Extend TransformControls type to include the getHelper() method
-interface TransformControlsWithHelper extends TransformControls {
-  getHelper(): THREE.Object3D;
-}
-
 export type RendererEvent =
   | 'ready'
   | 'progress'
@@ -80,10 +75,10 @@ export class Renderer implements IRenderer {
   private renderer: THREE.WebGLRenderer | WebGPURenderer | null = null;
   private cube: THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial[]> | null = null;
   private controls: { update: () => void; dispose: () => void; enabled: boolean; keyboardEnabled: boolean } | null = null;
-  private transformControls: TransformControlsWithHelper | null = null;
+  private transformControls: TransformControls | null = null;
   private faceLabels: THREE.Group | null = null;
   private assetManager: AssetManager | null = null;
-  private _isWebGPU = false;
+  private usingWebGPU = false;
   private lights: THREE.Light[] = [];
 
   private animationId: number | null = null;
@@ -137,12 +132,12 @@ export class Renderer implements IRenderer {
       if (WebGPU.isAvailable()) {
         console.log('WebGPU is available! Using WebGPU renderer.');
         this.renderer = new WebGPURenderer({ canvas, antialias: true });
-        this._isWebGPU = true;
+        this.usingWebGPU = true;
         await this.renderer.init();
       } else {
         console.log('WebGPU not available. Using WebGL renderer.');
         this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-        this._isWebGPU = false;
+        this.usingWebGPU = false;
       }
 
       this.renderer.setSize(container.clientWidth, container.clientHeight);
@@ -160,7 +155,7 @@ export class Renderer implements IRenderer {
       canvas.focus();
 
       // Create TransformControls for debug visualization
-      this.transformControls = new TransformControls(this.camera, canvas) as TransformControlsWithHelper;
+      this.transformControls = new TransformControls(this.camera, canvas);
       this.transformControls.attach(this.cube);
       this.transformControls.size = 0.8;
       this.transformControls.space = 'world';
@@ -177,7 +172,7 @@ export class Renderer implements IRenderer {
 
       this.emit('progress', { type: 'progress', progress: 50, message: 'Loading assets...' });
       // Initialize AssetManager and pre-load all environment maps
-      this.assetManager = new AssetManager(this.scene, this.renderer, this._isWebGPU);
+      this.assetManager = new AssetManager(this.scene, this.renderer, this.usingWebGPU);
       await this.assetManager.initialize();
 
       this.emit('progress', { type: 'progress', progress: 80, message: 'Applying environment map...' });
@@ -194,6 +189,32 @@ export class Renderer implements IRenderer {
       this.emit('error', { type: 'error', message: 'Initialization failed', error });
       throw error;
     }
+  }
+
+  dispose(): void {
+    this.stop();
+
+    if (this.controls) {
+      this.controls.dispose();
+    }
+
+    if (this.transformControls) {
+      this.transformControls.dispose();
+    }
+
+    if (this.assetManager) {
+      this.assetManager.dispose();
+    }
+
+    if (this.renderer) {
+      this.renderer.dispose();
+      this.renderer.domElement.remove();
+    }
+
+    this.eventListeners.clear();
+
+    // Clear the singleton instance
+    Renderer.instance = null;
   }
 
   resize(width: number, height: number): void {
@@ -278,7 +299,7 @@ export class Renderer implements IRenderer {
   }
 
   isWebGPU(): boolean {
-    return this._isWebGPU;
+    return this.usingWebGPU;
   }
 
   on(event: RendererEvent, callback: EventCallback): void {
@@ -334,32 +355,6 @@ export class Renderer implements IRenderer {
       cancelAnimationFrame(this.animationId);
       this.animationId = null;
     }
-  }
-
-  dispose(): void {
-    this.stop();
-
-    if (this.controls) {
-      this.controls.dispose();
-    }
-
-    if (this.transformControls) {
-      this.transformControls.dispose();
-    }
-
-    if (this.assetManager) {
-      this.assetManager.dispose();
-    }
-
-    if (this.renderer) {
-      this.renderer.dispose();
-      this.renderer.domElement.remove();
-    }
-
-    this.eventListeners.clear();
-
-    // Clear the singleton instance
-    Renderer.instance = null;
   }
 
   private emit(event: RendererEvent, data: EventData): void {
