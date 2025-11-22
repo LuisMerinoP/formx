@@ -1,17 +1,23 @@
 import type { FaceIndex, FaceStyle } from '../renderer/types';
-import { useRenderer } from '../contexts/RendererContext';
+import { useRenderer } from '../hooks/useRenderer';
 import formxLogo from '../assets/formx.svg';
 import './Controls.css';
 
-const FACE_NAMES = ['Right', 'Left', 'Top', 'Bottom', 'Front', 'Back'];
+const FACE_NAMES: Array<{ index: FaceIndex; name: string }> = [
+  { index: 0, name: 'Right' },
+  { index: 1, name: 'Left' },
+  { index: 2, name: 'Top' },
+  { index: 3, name: 'Bottom' },
+  { index: 4, name: 'Front' },
+  { index: 5, name: 'Back' },
+];
 const STYLES: FaceStyle[] = ['wood', 'glass', 'fur', 'metal', 'plastic'];
 
 export function Controls() {
-  // Get state and actions from context
-  const { state, actions } = useRenderer();
+  const { rendererState, fps, isWebGPU, rendererApi } = useRenderer();
 
   // Destructure for convenience
-  const { materialType, selectedFace, faceStyle, debugMode, showBackground, envMapQuality } = state;
+  const { materialType, selectedFace, faceStyle, debugMode, showBackground, envMapQuality } = rendererState;
   const {
     setMaterialType,
     setFaceStyle,
@@ -20,12 +26,15 @@ export function Controls() {
     setBackgroundVisible,
     setEnvMapQuality,
     resetCamera,
-  } = actions;
+  } = rendererApi;
 
   return (
     <div className="controls">
       <div className="logo-section">
         <img src={formxLogo} alt="formx" className="logo" />
+        <div style={{ fontSize: '12px', color: '#888', marginTop: '5px' }}>
+          {fps} FPS • {isWebGPU ? 'WebGPU' : 'WebGL'}
+        </div>
       </div>
 
       <div className="controls-section">
@@ -114,13 +123,13 @@ export function Controls() {
               >
                 All Faces
               </button>
-              {FACE_NAMES.map((name, index) => (
+              {FACE_NAMES.map((face) => (
                 <button
-                  key={index}
-                  className={selectedFace === index ? 'active' : ''}
-                  onClick={() => setSelectedFace(index as FaceIndex)}
+                  key={face.index}
+                  className={selectedFace === face.index ? 'active' : ''}
+                  onClick={() => setSelectedFace(face.index)}
                 >
-                  {name}
+                  {face.name}
                 </button>
               ))}
             </div>

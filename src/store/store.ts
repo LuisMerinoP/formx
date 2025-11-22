@@ -1,9 +1,9 @@
 import { configureStore } from '@reduxjs/toolkit';
-import cubeReducer from './cubeSlice';
+import rendererReducer from './rendererSlice';
 
 export const store = configureStore({
   reducer: {
-    cube: cubeReducer,
+    renderer: rendererReducer,
   },
 });
 

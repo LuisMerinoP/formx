@@ -4,7 +4,7 @@ export function createFaceLabels(): THREE.Group {
   const group = new THREE.Group();
 
   const faceNames = ['Right', 'Left', 'Top', 'Bottom', 'Front', 'Back'];
-  const positions = [
+  const positions: [number, number, number][] = [
     [1.1, 0, 0],   // Right
     [-1.1, 0, 0],  // Left
     [0, 1.1, 0],   // Top
@@ -51,7 +51,7 @@ export function createFaceLabels(): THREE.Group {
     });
     const mesh = new THREE.Mesh(geometry, material);
 
-    mesh.position.set(...positions[index] as [number, number, number]);
+    mesh.position.set(...positions[index]);
     mesh.rotation.set(...rotations[index]);
 
     group.add(mesh);

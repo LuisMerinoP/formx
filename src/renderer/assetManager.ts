@@ -65,38 +65,12 @@ export class AssetManager {
 
     // PMREMGenerator is only used for WebGL
     // WebGPU handles environment maps natively
-    if (!isWebGPU) {
-      this.pmremGenerator = new THREE.PMREMGenerator(renderer as THREE.WebGLRenderer);
+    if (!isWebGPU && renderer instanceof THREE.WebGLRenderer) {
+      this.pmremGenerator = new THREE.PMREMGenerator(renderer);
       this.pmremGenerator.compileEquirectangularShader();
     }
 
     this.initializeMaterials();
-  }
-
-  /**
-   * Pre-instantiate all material combinations.
-   * Creates materials for: 2 types (basic/pbr) × 5 styles = 10 materials
-   */
-  private initializeMaterials(): void {
-    const materialTypes: MaterialType[] = ['basic', 'pbr'];
-    const faceStyles: FaceStyle[] = ['wood', 'glass', 'fur', 'metal', 'plastic'];
-
-    materialTypes.forEach(type => {
-      faceStyles.forEach(style => {
-        const key = this.getMaterialKey(type, style);
-        const config = type === 'pbr'
-          ? this.materialConfigs[style]
-          : { roughness: 0.5, metalness: 0, color: 0x00aaff }; // Basic material defaults
-
-        const material = new THREE.MeshStandardMaterial({
-          color: config.color,
-          roughness: config.roughness,
-          metalness: config.metalness,
-        });
-
-        this.materials.set(key, material);
-      });
-    });
   }
 
   /**
@@ -158,13 +132,6 @@ export class AssetManager {
   }
 
   /**
-   * Generate a unique key for material lookup.
-   */
-  private getMaterialKey(type: MaterialType, style: FaceStyle): string {
-    return `${type}-${style}`;
-  }
-
-  /**
    * Dispose of all loaded assets and cleanup resources.
    */
   dispose(): void {
@@ -186,6 +153,58 @@ export class AssetManager {
     }
 
     this.isInitialized = false;
+  }
+
+  /**
+   * Check if a specific quality level is loaded.
+   */
+  isLoaded(quality: EnvMapQuality): boolean {
+    const asset = this.envMaps.get(quality);
+    return asset?.isLoaded ?? false;
+  }
+
+  /**
+   * Get loading status for all qualities.
+   */
+  getLoadingStatus(): Record<EnvMapQuality, boolean> {
+    return {
+      '1k': this.isLoaded('1k'),
+      '2k': this.isLoaded('2k'),
+      '4k': this.isLoaded('4k'),
+    };
+  }
+
+  /**
+   * Pre-instantiate all material combinations.
+   * Creates materials for: 2 types (basic/pbr) × 5 styles = 10 materials
+   */
+  private initializeMaterials(): void {
+    const materialTypes: MaterialType[] = ['basic', 'pbr'];
+    const faceStyles: FaceStyle[] = ['wood', 'glass', 'fur', 'metal', 'plastic'];
+
+    materialTypes.forEach(type => {
+      faceStyles.forEach(style => {
+        const key = this.getMaterialKey(type, style);
+        const config = type === 'pbr'
+          ? this.materialConfigs[style]
+          : { roughness: 0.5, metalness: 0, color: 0x00aaff }; // Basic material defaults
+
+        const material = new THREE.MeshStandardMaterial({
+          color: config.color,
+          roughness: config.roughness,
+          metalness: config.metalness,
+        });
+
+        this.materials.set(key, material);
+      });
+    });
+  }
+
+  /**
+   * Generate a unique key for material lookup.
+   */
+  private getMaterialKey(type: MaterialType, style: FaceStyle): string {
+    return `${type}-${style}`;
   }
 
   /**
@@ -258,24 +277,5 @@ export class AssetManager {
         }
       );
     });
-  }
-
-  /**
-   * Check if a specific quality level is loaded.
-   */
-  isLoaded(quality: EnvMapQuality): boolean {
-    const asset = this.envMaps.get(quality);
-    return asset?.isLoaded ?? false;
-  }
-
-  /**
-   * Get loading status for all qualities.
-   */
-  getLoadingStatus(): Record<EnvMapQuality, boolean> {
-    return {
-      '1k': this.isLoaded('1k'),
-      '2k': this.isLoaded('2k'),
-      '4k': this.isLoaded('4k'),
-    };
   }
 }

@@ -1,11 +1,11 @@
-import { Scene } from './components/Scene';
+import { Viewport } from './components/Viewport';
 import { Controls } from './components/Controls';
 import './App.css';
 
 function App() {
   return (
     <div className="app">
-      <Scene />
+      <Viewport />
       <Controls />
     </div>
   );
