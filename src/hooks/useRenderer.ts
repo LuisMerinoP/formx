@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import * as rendererActions from '../store/rendererSlice';
 import { getRenderer } from '../renderer/rendererFactory';
@@ -10,17 +10,17 @@ export function useRenderer() {
   const dispatch = useAppDispatch();
   const rendererState = useAppSelector((state) => state.renderer);
   const renderer = getRenderer();
-  const [fps, setFps] = useState(0);
-  const [isWebGPU, setIsWebGPU] = useState(false);
 
-  // Poll FPS and WebGPU status
+  // Poll FPS and WebGPU status and update Redux
   useEffect(() => {
+    // Set initial values
+    dispatch(rendererActions.setIsWebGPU(renderer.isWebGPU()));
+
     const interval = setInterval(() => {
-      setFps(renderer.getFPS());
-      setIsWebGPU(renderer.isWebGPU());
+      dispatch(rendererActions.setFps(renderer.getFPS()));
     }, FPS_POLL_INTERVAL);
     return () => clearInterval(interval);
-  }, [renderer]);
+  }, [dispatch, renderer]);
 
   const setMaterialType = useCallback((type: MaterialType) => {
     dispatch(rendererActions.setMaterialType(type));
@@ -79,19 +79,14 @@ export function useRenderer() {
   }, [renderer]);
 
   return {
-    rendererState,
-    fps,
-    isWebGPU,
-    rendererApi: {
-      setMaterialType,
-      setFaceStyle,
-      setSelectedFace,
-      setDebugMode,
-      setTransformMode,
-      setBackgroundVisible,
-      setEnvMapQuality,
-      resetCamera,
-      resize,
-    },
+    setMaterialType,
+    setFaceStyle,
+    setSelectedFace,
+    setDebugMode,
+    setTransformMode,
+    setBackgroundVisible,
+    setEnvMapQuality,
+    resetCamera,
+    resize,
   };
 }

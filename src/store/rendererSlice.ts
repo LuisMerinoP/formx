@@ -10,6 +10,8 @@ interface RendererState {
   showBackground: boolean;
   envMapQuality: EnvMapQuality;
   transformMode: TransformMode;
+  fps: number;
+  isWebGPU: boolean;
 }
 
 const initialState: RendererState = {
@@ -20,6 +22,8 @@ const initialState: RendererState = {
   showBackground: true,
   envMapQuality: '1k',
   transformMode: 'translate',
+  fps: 0,
+  isWebGPU: false,
 };
 
 const rendererSlice = createSlice({
@@ -47,6 +51,12 @@ const rendererSlice = createSlice({
     setTransformMode(state, action: PayloadAction<TransformMode>) {
       state.transformMode = action.payload;
     },
+    setFps(state, action: PayloadAction<number>) {
+      state.fps = action.payload;
+    },
+    setIsWebGPU(state, action: PayloadAction<boolean>) {
+      state.isWebGPU = action.payload;
+    },
     resetToDefaults(state) {
       state.materialType = initialState.materialType;
       state.selectedFace = initialState.selectedFace;
@@ -55,6 +65,7 @@ const rendererSlice = createSlice({
       state.showBackground = initialState.showBackground;
       state.envMapQuality = initialState.envMapQuality;
       state.transformMode = initialState.transformMode;
+      // Note: fps and isWebGPU are not reset as they're runtime metadata
     },
   },
 });
@@ -67,6 +78,8 @@ export const {
   toggleBackground,
   setEnvMapQuality,
   setTransformMode,
+  setFps,
+  setIsWebGPU,
   resetToDefaults,
 } = rendererSlice.actions;
 

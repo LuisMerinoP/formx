@@ -1,5 +1,6 @@
 import type { FaceIndex, FaceStyle } from '../renderer/types';
 import { useRenderer } from '../hooks/useRenderer';
+import { useAppSelector } from '../store/hooks';
 import formxLogo from '../assets/formx.svg';
 import './Controls.css';
 
@@ -14,10 +15,10 @@ const FACE_NAMES: Array<{ index: FaceIndex; name: string }> = [
 const STYLES: FaceStyle[] = ['wood', 'glass', 'fur', 'metal', 'plastic', 'gold'];
 
 export function Controls() {
-  const { rendererState, fps, isWebGPU, rendererApi } = useRenderer();
+  // Get renderer state from Redux
+  const { materialType, selectedFace, faceStyle, debugMode, showBackground, envMapQuality, transformMode, fps, isWebGPU } = useAppSelector((state) => state.renderer);
 
-  // Destructure for convenience
-  const { materialType, selectedFace, faceStyle, debugMode, showBackground, envMapQuality, transformMode } = rendererState;
+  // Get renderer API functions from hook
   const {
     setMaterialType,
     setFaceStyle,
@@ -27,7 +28,7 @@ export function Controls() {
     setBackgroundVisible,
     setEnvMapQuality,
     resetCamera,
-  } = rendererApi;
+  } = useRenderer();
 
   return (
     <div className="controls">
