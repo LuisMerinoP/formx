@@ -1,5 +1,6 @@
 import type {
   IRenderer,
+  RendererConfig,
   MaterialType,
   FaceIndex,
   FaceStyle,
@@ -31,8 +32,8 @@ export class MockRenderer implements IRenderer {
     return MockRenderer.instance !== null;
   }
 
-  async initialize(container: HTMLElement, debugMode: boolean, envMapQuality: EnvMapQuality): Promise<void> {
-    console.log('[MockRenderer] initialize() called', { container, debugMode, envMapQuality });
+  async initialize(container: HTMLElement, config: RendererConfig): Promise<void> {
+    console.log('[MockRenderer] initialize() called', { container, config });
 
     // Simulate async initialization
     await new Promise(resolve => setTimeout(resolve, 100));

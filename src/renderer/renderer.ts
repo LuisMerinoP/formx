@@ -16,6 +16,7 @@ import type {
   EventData,
   EventCallback,
   IRenderer,
+  RendererConfig,
 } from './types';
 
 // Re-export types for convenience
@@ -71,7 +72,8 @@ export class Renderer implements IRenderer {
     return Renderer.instance !== null;
   }
 
-  async initialize(container: HTMLElement, debugMode: boolean, envMapQuality: EnvMapQuality): Promise<void> {
+  async initialize(container: HTMLElement, config: RendererConfig): Promise<void> {
+    const { debugMode, envMapQuality } = config;
     try {
       this.emit('progress', { type: 'progress', progress: 0, message: 'Creating canvas...' });
       const canvas = document.createElement('canvas');

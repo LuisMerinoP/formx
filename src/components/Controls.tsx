@@ -44,13 +44,13 @@ export function Controls() {
         <div className="button-group">
           <button
             className={materialType === 'basic' ? 'active' : ''}
-            onClick={() => setMaterialType('basic')}
+            onClick={() => setMaterialType('basic', faceStyle, selectedFace)}
           >
             Basic
           </button>
           <button
             className={materialType === 'pbr' ? 'active' : ''}
-            onClick={() => setMaterialType('pbr')}
+            onClick={() => setMaterialType('pbr', faceStyle, selectedFace)}
           >
             PBR
           </button>
@@ -100,7 +100,7 @@ export function Controls() {
         <div className="button-group">
           <button
             className={showBackground ? 'active' : ''}
-            onClick={() => setBackgroundVisible(!showBackground)}
+            onClick={() => setBackgroundVisible(!showBackground, envMapQuality)}
           >
             {showBackground ? 'ENV MAP' : 'DARK'}
           </button>
@@ -112,19 +112,19 @@ export function Controls() {
         <div className="button-group">
           <button
             className={envMapQuality === '1k' ? 'active' : ''}
-            onClick={() => setEnvMapQuality('1k')}
+            onClick={() => setEnvMapQuality('1k', showBackground)}
           >
             1K
           </button>
           <button
             className={envMapQuality === '2k' ? 'active' : ''}
-            onClick={() => setEnvMapQuality('2k')}
+            onClick={() => setEnvMapQuality('2k', showBackground)}
           >
             2K
           </button>
           <button
             className={envMapQuality === '4k' ? 'active' : ''}
-            onClick={() => setEnvMapQuality('4k')}
+            onClick={() => setEnvMapQuality('4k', showBackground)}
           >
             4K
           </button>
@@ -170,7 +170,7 @@ export function Controls() {
                 <button
                   key={style}
                   className={faceStyle === style ? 'active' : ''}
-                  onClick={() => setFaceStyle(style)}
+                  onClick={() => setFaceStyle(materialType, style, selectedFace)}
                 >
                   {style.charAt(0).toUpperCase() + style.slice(1)}
                 </button>

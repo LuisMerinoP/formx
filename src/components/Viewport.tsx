@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { useAppSelector } from "../store/hooks";
 import type { ProgressData, EventData } from "../renderer/types";
-import { getRenderer } from "../renderer/rendererFactory";
+import { useRenderer } from "../hooks/useRenderer";
+import { useAppSelector } from "../store/hooks";
 import "./Viewport.css";
 
 export function Viewport() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { debugMode, envMapQuality } = useAppSelector((state) => state.renderer);
+  const renderer = useRenderer();
+  const rendererState = useAppSelector((state) => state.renderer);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<ProgressData>({ type: 'progress', progress: 0, message: 'Initializing...' });
@@ -18,7 +19,6 @@ export function Viewport() {
     }
 
     console.log('Viewport: Starting renderer initialization');
-    const renderer = getRenderer();
 
     // Subscribe to events
     const handleProgress = (data: EventData) => {
@@ -44,9 +44,12 @@ export function Viewport() {
     renderer.on('ready', handleReady);
     renderer.on('error', handleError);
 
-    // Initialize renderer (no need to await, we handle completion via events)
+    // Initialize renderer with config from Redux
     console.log('Viewport: Starting renderer initialization');
-    renderer.initialize(containerRef.current!, debugMode, envMapQuality);
+    renderer.initialize(containerRef.current, {
+      debugMode: rendererState.debugMode,
+      envMapQuality: rendererState.envMapQuality,
+    });
 
     // Handle window resize
     const handleResize = () => {

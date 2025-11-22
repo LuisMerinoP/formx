@@ -1,6 +1,7 @@
 import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
 import type { MaterialType, FaceIndex, FaceStyle, EnvMapQuality, TransformMode } from '../renderer/types';
+import WebGPU from 'three/addons/capabilities/WebGPU.js';
 
 interface RendererState {
   materialType: MaterialType;
@@ -23,7 +24,7 @@ const initialState: RendererState = {
   envMapQuality: '1k',
   transformMode: 'translate',
   fps: 0,
-  isWebGPU: false,
+  isWebGPU: WebGPU.isAvailable(),
 };
 
 const rendererSlice = createSlice({
@@ -54,9 +55,6 @@ const rendererSlice = createSlice({
     setFps(state, action: PayloadAction<number>) {
       state.fps = action.payload;
     },
-    setIsWebGPU(state, action: PayloadAction<boolean>) {
-      state.isWebGPU = action.payload;
-    },
     resetToDefaults(state) {
       state.materialType = initialState.materialType;
       state.selectedFace = initialState.selectedFace;
@@ -65,7 +63,6 @@ const rendererSlice = createSlice({
       state.showBackground = initialState.showBackground;
       state.envMapQuality = initialState.envMapQuality;
       state.transformMode = initialState.transformMode;
-      // Note: fps and isWebGPU are not reset as they're runtime metadata
     },
   },
 });
@@ -79,7 +76,6 @@ export const {
   setEnvMapQuality,
   setTransformMode,
   setFps,
-  setIsWebGPU,
   resetToDefaults,
 } = rendererSlice.actions;
 

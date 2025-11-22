@@ -44,9 +44,14 @@ export type EventData = ProgressData | ErrorData | EnvMapData | EmptyData;
 
 export type EventCallback = (data: EventData) => void;
 
+export interface RendererConfig {
+  debugMode: boolean;
+  envMapQuality: EnvMapQuality;
+}
+
 export interface IRenderer {
   // Lifecycle
-  initialize(container: HTMLElement, debugMode: boolean, envMapQuality: EnvMapQuality): Promise<void>;
+  initialize(container: HTMLElement, config: RendererConfig): Promise<void>;
   dispose(): void;
 
   // Renderer operations (stateless - accept state as parameters)
