@@ -47,6 +47,15 @@ const rendererSlice = createSlice({
     setTransformMode(state, action: PayloadAction<TransformMode>) {
       state.transformMode = action.payload;
     },
+    resetToDefaults(state) {
+      state.materialType = initialState.materialType;
+      state.selectedFace = initialState.selectedFace;
+      state.faceStyle = initialState.faceStyle;
+      state.debugMode = initialState.debugMode;
+      state.showBackground = initialState.showBackground;
+      state.envMapQuality = initialState.envMapQuality;
+      state.transformMode = initialState.transformMode;
+    },
   },
 });
 
@@ -58,6 +67,7 @@ export const {
   toggleBackground,
   setEnvMapQuality,
   setTransformMode,
+  resetToDefaults,
 } = rendererSlice.actions;
 
 export default rendererSlice.reducer;

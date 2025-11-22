@@ -1,7 +1,7 @@
 import { useCallback, useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import * as rendererActions from '../store/rendererSlice';
-import { Renderer } from '../renderer/renderer';
+import { getRenderer } from '../renderer/rendererFactory';
 import type { MaterialType, FaceIndex, FaceStyle, EnvMapQuality, TransformMode } from '../renderer/types';
 
 const FPS_POLL_INTERVAL = 500;
@@ -9,7 +9,7 @@ const FPS_POLL_INTERVAL = 500;
 export function useRenderer() {
   const dispatch = useAppDispatch();
   const rendererState = useAppSelector((state) => state.renderer);
-  const renderer = Renderer.getInstance();
+  const renderer = getRenderer();
   const [fps, setFps] = useState(0);
   const [isWebGPU, setIsWebGPU] = useState(false);
 
@@ -62,9 +62,17 @@ export function useRenderer() {
   }, [dispatch, renderer]);
 
   const resetCamera = useCallback(() => {
-    // No Redux state to update - purely a renderer operation
+    // Reset Redux state to defaults
+    dispatch(rendererActions.resetToDefaults());
+
+    // Reset renderer to defaults
     renderer.resetCamera();
-  }, [renderer]);
+    renderer.setDebugMode(false);
+    renderer.setBackgroundVisible(true, '1k');
+    renderer.setEnvMapQuality('1k', true);
+    renderer.setMaterialType('basic', 'wood', null);
+    renderer.setAutoRotate(true);
+  }, [dispatch, renderer]);
 
   const resize = useCallback((width: number, height: number) => {
     renderer.resize(width, height);

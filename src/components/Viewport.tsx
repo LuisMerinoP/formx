@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAppSelector } from "../store/hooks";
-import { Renderer, type ProgressData, type EventData } from "../renderer/renderer";
+import type { ProgressData, EventData } from "../renderer/types";
+import { getRenderer } from "../renderer/rendererFactory";
 import "./Viewport.css";
 
 export function Viewport() {
@@ -17,7 +18,7 @@ export function Viewport() {
     }
 
     console.log('Viewport: Starting renderer initialization');
-    const renderer = Renderer.getInstance();
+    const renderer = getRenderer();
 
     // Subscribe to events
     const handleProgress = (data: EventData) => {

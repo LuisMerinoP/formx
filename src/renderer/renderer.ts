@@ -3,81 +3,35 @@ import WebGPU from 'three/addons/capabilities/WebGPU.js';
 import { WebGPURenderer } from 'three/webgpu';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 import { createCube } from './cube';
-import { createControls } from './controls';
+import { createControls, type Controls } from './controls';
 import { createFaceLabels } from './faceLabels';
 import { AssetManager } from './assetManager';
-import type { MaterialType, FaceIndex, FaceStyle, EnvMapQuality, TransformMode } from './types';
+import type {
+  MaterialType,
+  FaceIndex,
+  FaceStyle,
+  EnvMapQuality,
+  TransformMode,
+  RendererEvent,
+  EventData,
+  EventCallback,
+  IRenderer,
+} from './types';
 
-export type RendererEvent =
-  | 'ready'
-  | 'progress'
-  | 'envMapLoaded'
-  | 'envMapError'
-  | 'cameraReset'
-  | 'error';
-
-export interface ProgressData {
-  type: 'progress';
-  progress: number;
-  message: string;
-}
-
-export interface ErrorData {
-  type: 'error';
-  message: string;
-  error?: unknown;
-}
-
-export interface EnvMapData {
-  type: 'envMap';
-  quality: EnvMapQuality;
-  error?: unknown;
-}
-
-export interface EmptyData {
-  type: 'empty';
-}
-
-export type EventData = ProgressData | ErrorData | EnvMapData | EmptyData;
-
-type EventCallback = (data: EventData) => void;
-
-export interface IRenderer {
-  // Lifecycle
-  initialize(container: HTMLElement, debugMode: boolean, envMapQuality: EnvMapQuality): Promise<void>;
-  dispose(): void;
-
-  // Renderer operations (stateless - accept state as parameters)
-  setMaterialType(type: MaterialType, faceStyle: FaceStyle, face?: FaceIndex | null): void;
-  setFaceStyle(type: MaterialType, style: FaceStyle, face?: FaceIndex | null): void;
-  setSelectedFace(face: FaceIndex | null): void;
-  setDebugMode(enabled: boolean): void;
-  setTransformMode(mode: TransformMode): void;
-  setBackgroundVisible(visible: boolean, envMapQuality: EnvMapQuality): void;
-  setEnvMapQuality(quality: EnvMapQuality, showBackground: boolean): void;
-  resetCamera(): void;
-  resize(width: number, height: number): void;
-
-  // Metadata access
-  getFPS(): number;
-  isWebGPU(): boolean;
-
-  // Event system
-  on(event: RendererEvent, callback: EventCallback): void;
-  off(event: RendererEvent, callback: EventCallback): void;
-}
+// Re-export types for convenience
+export type { ProgressData, ErrorData, EnvMapData, EmptyData, EventData, IRenderer } from './types';
 
 export class Renderer implements IRenderer {
   private static instance: Renderer | null = null;
 
-  private scene: THREE.Scene | null = null;
-  private camera: THREE.PerspectiveCamera | null = null;
-  private renderer: THREE.WebGLRenderer | WebGPURenderer | null = null;
-  private cube: THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial[]> | null = null;
-  private controls: { update: () => void; dispose: () => void; enabled: boolean; keyboardEnabled: boolean } | null = null;
-  private transformControls: TransformControls | null = null;
-  private faceLabels: THREE.Group | null = null;
-  private assetManager: AssetManager | null = null;
+  private scene: THREE.Scene;
+  private camera: THREE.PerspectiveCamera;
+  private renderer: THREE.WebGLRenderer | WebGPURenderer;
+  private cube: THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial[]>;
+  private controls: Controls;
+  private transformControls: TransformControls;
+  private faceLabels: THREE.Group;
+  private assetManager: AssetManager;
   private usingWebGPU = false;
   private lights: THREE.Light[] = [];
 
@@ -89,7 +43,22 @@ export class Renderer implements IRenderer {
   private animationId: number | null = null;
   private isInitialized = false;
 
-  private constructor() {}
+  private constructor() {
+    this.scene = new THREE.Scene();
+    this.camera = new THREE.PerspectiveCamera();
+    this.renderer = new THREE.WebGLRenderer();
+    this.cube = new THREE.Mesh();
+    this.controls = {
+      update: () => {},
+      dispose: () => {},
+      enabled: false,
+      keyboardEnabled: false,
+      setAutoRotate: () => {},
+    };
+    this.transformControls = new TransformControls(this.camera, document.createElement('canvas'));
+    this.faceLabels = new THREE.Group();
+    this.assetManager = new AssetManager(this.scene, this.renderer, false);
+  }
 
   static getInstance(): IRenderer {
     if (!Renderer.instance) {
@@ -276,6 +245,10 @@ export class Renderer implements IRenderer {
     // But keep keyboard controls enabled
     if (this.controls) {
       this.controls.enabled = !enabled;
+      // Disable auto-rotate when entering debug mode
+      if (enabled) {
+        this.controls.setAutoRotate(false);
+      }
     }
 
     if (this.faceLabels) {
@@ -303,6 +276,11 @@ export class Renderer implements IRenderer {
     this.requestRender();
   }
 
+  setAutoRotate(enabled: boolean): void {
+    this.controls.setAutoRotate(enabled);
+    this.requestRender();
+  }
+
   resetCamera(): void {
     if (this.camera) {
       this.camera.position.set(0, 0, 7);
@@ -314,6 +292,15 @@ export class Renderer implements IRenderer {
       this.cube.position.set(0, 0, 0);
       this.cube.rotation.set(0, 0, 0);
       this.cube.scale.set(1, 1, 1);
+
+      // Reset materials to default
+      const materials = this.cube.material;
+      materials.forEach((material) => {
+        material.color.setHex(0x00aaff);
+        material.roughness = 0.5;
+        material.metalness = 0;
+        material.needsUpdate = true;
+      });
     }
 
     this.emit('cameraReset', { type: 'empty' });
@@ -368,15 +355,12 @@ export class Renderer implements IRenderer {
       if (!this.isInitialized) return;
       if (!this.renderRequested) return;
 
-      this.renderer!.render(this.scene!, this.camera!);
+      this.renderer.render(this.scene, this.camera);
       this.renderRequested = false;
 
       this.updateFPS();
-
-      // Will requestRender of the next frame on demand.
-      if (this.controls) {
-        this.controls.update();
-      }
+      
+      this.controls.update();
     };
 
     this.lastFrameTime = performance.now();

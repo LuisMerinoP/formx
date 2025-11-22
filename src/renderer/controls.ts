@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 
-interface Controls {
+export interface Controls {
   update: () => void;
   dispose: () => void;
   enabled: boolean;
   keyboardEnabled: boolean;
+  setAutoRotate: (enabled: boolean) => void;
 }
 
 // Configuration constants
@@ -87,12 +88,13 @@ export function createControls(
   // Touch events
   function onTouchStart(event: TouchEvent) {
     if (!controlsState.enabled) return;
-    if (event.touches.length === 1) {
+    const touch = event.touches[0];
+    if (touch && event.touches.length === 1) {
       isDragging = true;
       autoRotate = false;
       previousMousePosition = {
-        x: event.touches[0].clientX,
-        y: event.touches[0].clientY,
+        x: touch.clientX,
+        y: touch.clientY,
       };
     }
   }
@@ -100,15 +102,18 @@ export function createControls(
   function onTouchMove(event: TouchEvent) {
     if (!controlsState.enabled || !isDragging || event.touches.length !== 1) return;
 
-    const deltaX = event.touches[0].clientX - previousMousePosition.x;
-    const deltaY = event.touches[0].clientY - previousMousePosition.y;
+    const touch = event.touches[0];
+    if (!touch) return;
+
+    const deltaX = touch.clientX - previousMousePosition.x;
+    const deltaY = touch.clientY - previousMousePosition.y;
 
     mesh.rotation.y += deltaX * ROTATION_SPEED;
     mesh.rotation.x += deltaY * ROTATION_SPEED;
 
     previousMousePosition = {
-      x: event.touches[0].clientX,
-      y: event.touches[0].clientY,
+      x: touch.clientX,
+      y: touch.clientY,
     };
 
     onNeedRender();
@@ -158,11 +163,13 @@ export function createControls(
       // Add to pressed keys set
       keysPressed.add(code || key);
       autoRotate = false;
+      onNeedRender();
       event.preventDefault();
     }
-    // Toggle auto-rotate (only when controls are enabled)
-    else if ((key === 'r' || code === 'KeyR') && controlsState.enabled) {
+    // Toggle auto-rotate
+    else if (key === 'r' || code === 'KeyR') {
       autoRotate = !autoRotate;
+      onNeedRender();
       event.preventDefault();
     }
   }
@@ -200,6 +207,9 @@ export function createControls(
       // Keyboard enabled state follows mouse controls for now
       controlsState.enabled = value;
     },
+    setAutoRotate: (enabled: boolean) => {
+      autoRotate = enabled;
+    },
     update: () => {
       let needsRender = false;
 
@@ -227,8 +237,8 @@ export function createControls(
         needsRender = true;
       }
 
-      // Auto-rotate mesh (only when mouse controls are enabled)
-      if (autoRotate && controlsState.enabled) {
+      // Auto-rotate mesh
+      if (autoRotate) {
         mesh.rotation.y += AUTO_ROTATE_SPEED;
         needsRender = true;
       }
