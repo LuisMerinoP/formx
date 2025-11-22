@@ -118,13 +118,13 @@ export class AssetManager {
       this.scene.environment = texture;
       this.scene.background = texture;
     } else if (texture && !showBackground) {
-      // Hide background but also remove environment reflections
-      this.scene.environment = null;
-      this.scene.background = null;
+      // Keep environment lighting for materials, but hide the background visual
+      this.scene.environment = texture;
+      this.scene.background = new THREE.Color(0x1a1a1a);
     } else {
       // No texture at all
       this.scene.environment = null;
-      this.scene.background = null;
+      this.scene.background = new THREE.Color(0x1a1a1a);
     }
   }
 
