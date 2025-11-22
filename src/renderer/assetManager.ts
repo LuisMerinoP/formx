@@ -205,7 +205,7 @@ export class AssetManager {
   private loadAndProcessHDR(quality: EnvMapQuality): Promise<THREE.Texture | null> {
     return new Promise((resolve) => {
       const loader = new HDRLoader();
-      const path = `/src/assets/golden_gate_hills_${quality}.hdr`;
+      const path = `/golden_gate_hills_${quality}.hdr`;
 
       loader.load(
         path,
