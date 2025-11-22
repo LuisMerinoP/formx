@@ -49,21 +49,35 @@ export interface RendererConfig {
   envMapQuality: EnvMapQuality;
 }
 
+export type CubeFaceOptions = { allFaces: true } | { targetFace: FaceIndex };
+
+export interface RendererResetConfig {
+  debugMode: boolean;
+  showBackground: boolean;
+  envMapQuality: EnvMapQuality;
+  materialType: MaterialType;
+  faceStyle: FaceStyle;
+  selectedFace: FaceIndex | null;
+  cameraPosition: { x: number; y: number; z: number };
+  cameraLookAt: { x: number; y: number; z: number };
+  cubePosition: { x: number; y: number; z: number };
+  cubeRotation: { x: number; y: number; z: number };
+  cubeScale: { x: number; y: number; z: number };
+}
+
 export interface IRenderer {
   // Lifecycle
   initialize(container: HTMLElement, config: RendererConfig): Promise<void>;
   dispose(): void;
 
   // Renderer operations (stateless - accept state as parameters)
-  setMaterialType(type: MaterialType, faceStyle: FaceStyle, face?: FaceIndex | null): void;
-  setFaceStyle(type: MaterialType, style: FaceStyle, face?: FaceIndex | null): void;
-  setSelectedFace(face: FaceIndex | null): void;
+  setMaterial(type: MaterialType, style: FaceStyle, options?: CubeFaceOptions): void;
   setDebugMode(enabled: boolean): void;
   setTransformMode(mode: TransformMode): void;
   setBackgroundVisible(visible: boolean, envMapQuality: EnvMapQuality): void;
   setEnvMapQuality(quality: EnvMapQuality, showBackground: boolean): void;
   setAutoRotate(enabled: boolean): void;
-  resetCamera(): void;
+  resetToDefaults(config: RendererResetConfig): void;
   resize(width: number, height: number): void;
 
   // Metadata access

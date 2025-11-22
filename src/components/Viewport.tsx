@@ -20,7 +20,6 @@ export function Viewport() {
 
     console.log('Viewport: Starting renderer initialization');
 
-    // Subscribe to events
     const handleProgress = (data: EventData) => {
       if (data.type === 'progress') {
         setProgress(data);
@@ -44,14 +43,12 @@ export function Viewport() {
     renderer.on('ready', handleReady);
     renderer.on('error', handleError);
 
-    // Initialize renderer with config from Redux
     console.log('Viewport: Starting renderer initialization');
     renderer.initialize(containerRef.current, {
       debugMode: rendererState.debugMode,
       envMapQuality: rendererState.envMapQuality,
     });
 
-    // Handle window resize
     const handleResize = () => {
       renderer.resize(window.innerWidth, window.innerHeight);
     };

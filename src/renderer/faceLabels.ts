@@ -23,7 +23,6 @@ const ROTATIONS = [
   [0, Math.PI, 0],          // Back: rotate 180 around Y
 ] as const;
 
-// Canvas dimensions for label texture
 const CANVAS_WIDTH = 256;
 const CANVAS_HEIGHT = 128;
 
@@ -42,11 +41,9 @@ export function createFaceLabels(): THREE.Group {
     canvas.height = CANVAS_HEIGHT;
     const ctx = canvas.getContext('2d')!;
 
-    // Background
     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-    // Text
     ctx.fillStyle = 'white';
     ctx.font = 'bold 32px Arial';
     ctx.textAlign = 'center';
@@ -55,7 +52,6 @@ export function createFaceLabels(): THREE.Group {
 
     const texture = new THREE.CanvasTexture(canvas);
 
-    // Use PlaneGeometry instead of Sprite to avoid billboarding
     const geometry = new THREE.PlaneGeometry(1, 0.5);
     const material = new THREE.MeshBasicMaterial({
       map: texture,

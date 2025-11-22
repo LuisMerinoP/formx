@@ -1,6 +1,8 @@
 import type {
   IRenderer,
   RendererConfig,
+  RendererResetConfig,
+  CubeFaceOptions,
   MaterialType,
   FaceIndex,
   FaceStyle,
@@ -56,12 +58,8 @@ export class MockRenderer implements IRenderer {
     MockRenderer.instance = null;
   }
 
-  setMaterialType(type: MaterialType, faceStyle: FaceStyle, face?: FaceIndex | null): void {
-    console.log('[MockRenderer] setMaterialType() called', { type, faceStyle, face });
-  }
-
-  setFaceStyle(type: MaterialType, style: FaceStyle, face?: FaceIndex | null): void {
-    console.log('[MockRenderer] setFaceStyle() called', { type, style, face });
+  setMaterial(type: MaterialType, style: FaceStyle, options?: CubeFaceOptions): void {
+    console.log('[MockRenderer] setMaterial() called', { type, style, options });
   }
 
   setSelectedFace(face: FaceIndex | null): void {
@@ -88,8 +86,8 @@ export class MockRenderer implements IRenderer {
     console.log('[MockRenderer] setAutoRotate() called', { enabled });
   }
 
-  resetCamera(): void {
-    console.log('[MockRenderer] resetCamera() called');
+  resetToDefaults(config: RendererResetConfig): void {
+    console.log('[MockRenderer] resetToDefaults() called', { config });
     this.emit('cameraReset', { type: 'empty' });
   }
 

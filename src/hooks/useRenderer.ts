@@ -1,17 +1,36 @@
 import { useEffect, useMemo } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import * as rendererActions from '../store/rendererSlice';
+import { initialState } from '../store/rendererSlice';
 import { getRenderer } from '../renderer/rendererFactory';
-import type { MaterialType, FaceIndex, FaceStyle, EnvMapQuality, TransformMode, IRenderer, RendererConfig } from '../renderer/types';
+import type { MaterialType, FaceStyle, EnvMapQuality, TransformMode, IRenderer, RendererConfig, CubeFaceOptions, RendererResetConfig } from '../renderer/types';
 
 const FPS_POLL_INTERVAL = 500;
 
+/**
+ * React hook that bridges the renderer singleton with Redux state management.
+ *
+ * This is the central wiring point between the renderer and React sides:
+ * - All renderer interactions MUST go through this hook's API
+ * - Each renderer method call dispatches corresponding Redux actions
+ * - Updates renderer and Redux state in sync, ensuring consistency
+ * - Centralizes all state management in one place
+ *
+ * IMPORTANT: Do NOT operate the Renderer singleton directly outside this hook.
+ * Direct renderer access bypasses Redux synchronization and breaks the single source of truth.
+ *
+ * Architecture:
+ * - Redux is the single source of truth for all renderer/UI state
+ * - Data flow starts from the UI (React) → Redux → Renderer
+ * - This hook coordinates both sides to keep them in sync
+ *
+ * @returns IRenderer interface with Redux-coordinated methods
+ */
 export function useRenderer(): IRenderer {
   const dispatch = useAppDispatch();
   const rendererState = useAppSelector((state) => state.renderer);
   const renderer: IRenderer = getRenderer();
 
-  // Poll FPS and update Redux
   useEffect(() => {
     const interval = setInterval(() => {
       dispatch(rendererActions.setFps(renderer.getFPS()));
@@ -19,9 +38,7 @@ export function useRenderer(): IRenderer {
     return () => clearInterval(interval);
   }, [dispatch, renderer]);
 
-  // Return an object that implements IRenderer interface (strict checking with explicit return type)
   return useMemo((): IRenderer => ({
-    // Lifecycle methods
     initialize: (container: HTMLElement, config: RendererConfig) => {
       return renderer.initialize(container, config);
     },
@@ -30,19 +47,10 @@ export function useRenderer(): IRenderer {
       renderer.dispose();
     },
 
-    setMaterialType: (type: MaterialType, faceStyle: FaceStyle, face?: FaceIndex | null) => {
+    setMaterial: (type: MaterialType, style: FaceStyle, options?: CubeFaceOptions) => {
       dispatch(rendererActions.setMaterialType(type));
-      renderer.setMaterialType(type, faceStyle, face);
-    },
-
-    setFaceStyle: (type: MaterialType, style: FaceStyle, face?: FaceIndex | null) => {
       dispatch(rendererActions.setFaceStyle(style));
-      renderer.setFaceStyle(type, style, face);
-    },
-
-    setSelectedFace: (face: FaceIndex | null) => {
-      dispatch(rendererActions.setSelectedFace(face));
-      renderer.setSelectedFace(face);
+      renderer.setMaterial(type, style, options);
     },
 
     setDebugMode: (enabled: boolean) => {
@@ -69,28 +77,18 @@ export function useRenderer(): IRenderer {
       renderer.setAutoRotate(enabled);
     },
 
-    resetCamera: () => {
-      // Reset Redux state to defaults
+    resetToDefaults: (config: RendererResetConfig) => {
       dispatch(rendererActions.resetToDefaults());
-
-      // Reset renderer to defaults
-      renderer.resetCamera();
-      renderer.setDebugMode(false);
-      renderer.setBackgroundVisible(true, '1k');
-      renderer.setEnvMapQuality('1k', true);
-      renderer.setMaterialType('basic', 'wood', null);
-      renderer.setAutoRotate(true);
+      renderer.resetToDefaults(config);
     },
 
     resize: (width: number, height: number) => {
       renderer.resize(width, height);
     },
 
-    // Metadata access (pass through)
     getFPS: () => renderer.getFPS(),
     isWebGPU: () => renderer.isWebGPU(),
 
-    // Event system (pass through)
     on: (event, callback) => renderer.on(event, callback),
     off: (event, callback) => renderer.off(event, callback),
   }), [dispatch, renderer, rendererState.selectedFace]);

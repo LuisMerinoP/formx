@@ -1,6 +1,8 @@
 import type { FaceIndex, FaceStyle } from '../renderer/types';
 import { useRenderer } from '../hooks/useRenderer';
-import { useAppSelector } from '../store/hooks';
+import { useAppSelector, useAppDispatch } from '../store/hooks';
+import * as rendererActions from '../store/rendererSlice';
+import { initialState } from '../store/rendererSlice';
 import formxLogo from '../assets/formx.svg';
 import './Controls.css';
 
@@ -15,19 +17,16 @@ const FACE_NAMES: Array<{ index: FaceIndex; name: string }> = [
 const STYLES: FaceStyle[] = ['wood', 'glass', 'fur', 'metal', 'plastic', 'gold'];
 
 export function Controls() {
-  // Get renderer state from Redux
+  const dispatch = useAppDispatch();
   const { materialType, selectedFace, faceStyle, debugMode, showBackground, envMapQuality, transformMode, fps, isWebGPU } = useAppSelector((state) => state.renderer);
 
-  // Get renderer API functions from hook
   const {
-    setMaterialType,
-    setFaceStyle,
-    setSelectedFace,
+    setMaterial,
     setDebugMode,
     setTransformMode,
     setBackgroundVisible,
     setEnvMapQuality,
-    resetCamera,
+    resetToDefaults,
   } = useRenderer();
 
   return (
@@ -44,13 +43,13 @@ export function Controls() {
         <div className="button-group">
           <button
             className={materialType === 'basic' ? 'active' : ''}
-            onClick={() => setMaterialType('basic', faceStyle, selectedFace)}
+            onClick={() => setMaterial('basic', faceStyle, selectedFace === null ? { allFaces: true } : { targetFace: selectedFace })}
           >
             Basic
           </button>
           <button
             className={materialType === 'pbr' ? 'active' : ''}
-            onClick={() => setMaterialType('pbr', faceStyle, selectedFace)}
+            onClick={() => setMaterial('pbr', faceStyle, selectedFace === null ? { allFaces: true } : { targetFace: selectedFace })}
           >
             PBR
           </button>
@@ -134,7 +133,7 @@ export function Controls() {
       <div className="controls-section">
         <h3>Reset</h3>
         <div className="button-group">
-          <button onClick={resetCamera}>
+          <button onClick={() => resetToDefaults({ ...initialState })}>
             Reset All
           </button>
         </div>
@@ -147,7 +146,7 @@ export function Controls() {
             <div className="button-group face-grid">
               <button
                 className={selectedFace === null ? 'active' : ''}
-                onClick={() => setSelectedFace(null)}
+                onClick={() => dispatch(rendererActions.setSelectedFace(null))}
               >
                 All Faces
               </button>
@@ -155,7 +154,7 @@ export function Controls() {
                 <button
                   key={face.index}
                   className={selectedFace === face.index ? 'active' : ''}
-                  onClick={() => setSelectedFace(face.index)}
+                  onClick={() => dispatch(rendererActions.setSelectedFace(face.index))}
                 >
                   {face.name}
                 </button>
@@ -170,7 +169,7 @@ export function Controls() {
                 <button
                   key={style}
                   className={faceStyle === style ? 'active' : ''}
-                  onClick={() => setFaceStyle(materialType, style, selectedFace)}
+                  onClick={() => setMaterial(materialType, style, selectedFace === null ? { allFaces: true } : { targetFace: selectedFace })}
                 >
                   {style.charAt(0).toUpperCase() + style.slice(1)}
                 </button>

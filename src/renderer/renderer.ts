@@ -17,10 +17,9 @@ import type {
   EventCallback,
   IRenderer,
   RendererConfig,
+  RendererResetConfig,
+  CubeFaceOptions,
 } from './types';
-
-// Re-export types for convenience
-export type { ProgressData, ErrorData, EnvMapData, EmptyData, EventData, IRenderer } from './types';
 
 export class Renderer implements IRenderer {
   private static instance: Renderer | null = null;
@@ -118,7 +117,6 @@ export class Renderer implements IRenderer {
       this.renderer.setSize(container.clientWidth, container.clientHeight);
       this.renderer.setPixelRatio(window.devicePixelRatio);
 
-      // Configure tone mapping
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
       this.renderer.toneMappingExposure = 1;
 
@@ -151,19 +149,16 @@ export class Renderer implements IRenderer {
       this.cube.add(this.faceLabels);
 
       this.emit('progress', { type: 'progress', progress: 50, message: 'Loading assets...' });
+
       // Initialize AssetManager and pre-load all environment maps
       this.assetManager = new AssetManager(this.scene, this.renderer, this.usingWebGPU);
       await this.assetManager.initialize();
 
       this.emit('progress', { type: 'progress', progress: 80, message: 'Applying environment map...' });
-      // Apply the initial environment map quality
       await this.loadEnvironmentMap(envMapQuality, true);
 
       this.emit('progress', { type: 'progress', progress: 95, message: 'Starting render loop...' });
-
       this.isInitialized = true;
-
-      // Start render loop (for controls update and render-on-demand)
       this.startRenderLoop();
 
       this.emit('progress', { type: 'progress', progress: 100, message: 'Ready!' });
@@ -200,7 +195,6 @@ export class Renderer implements IRenderer {
 
     this.eventListeners.clear();
 
-    // Clear the singleton instance
     Renderer.instance = null;
   }
 
@@ -217,22 +211,13 @@ export class Renderer implements IRenderer {
     this.requestRender();
   }
 
-  setMaterialType(type: MaterialType, faceStyle: FaceStyle, face?: FaceIndex | null): void {
-    this.updateMaterials(type, faceStyle, face);
+  setMaterial(type: MaterialType, style: FaceStyle, options?: CubeFaceOptions): void {
+    const updateOptions = options ?? { allFaces: true as const };
+    this.updateMaterials(type, style, updateOptions);
     this.requestRender();
-  }
-
-  setFaceStyle(type: MaterialType, style: FaceStyle, face?: FaceIndex | null): void {
-    this.updateMaterials(type, style, face);
-    this.requestRender();
-  }
-
-  setSelectedFace(_face: FaceIndex | null): void {
-    // No-op - selectedFace is purely UI state, doesn't affect renderer
   }
 
   setDebugMode(enabled: boolean): void {
-    // Toggle TransformControls
     if (this.transformControls && this.scene) {
       this.transformControls.enabled = enabled;
       const gizmo = this.transformControls.getHelper();
@@ -243,11 +228,9 @@ export class Renderer implements IRenderer {
       }
     }
 
-    // Disable custom mouse controls when TransformControls are active
-    // But keep keyboard controls enabled
     if (this.controls) {
       this.controls.enabled = !enabled;
-      // Disable auto-rotate when entering debug mode
+
       if (enabled) {
         this.controls.setAutoRotate(false);
       }
@@ -268,7 +251,6 @@ export class Renderer implements IRenderer {
   }
 
   setBackgroundVisible(visible: boolean, envMapQuality: EnvMapQuality): void {
-    // Re-apply the current environment map with new visibility setting
     this.loadEnvironmentMap(envMapQuality, visible);
     this.requestRender();
   }
@@ -283,27 +265,22 @@ export class Renderer implements IRenderer {
     this.requestRender();
   }
 
-  resetCamera(): void {
-    if (this.camera) {
-      this.camera.position.set(0, 0, 7);
-      this.camera.lookAt(0, 0, 0);
-    }
+  resetToDefaults(config: RendererResetConfig): void {
+    this.camera.position.set(config.cameraPosition.x, config.cameraPosition.y, config.cameraPosition.z);
+    this.camera.lookAt(config.cameraLookAt.x, config.cameraLookAt.y, config.cameraLookAt.z);
 
-    // Reset cube transform (position, rotation, scale)
-    if (this.cube) {
-      this.cube.position.set(0, 0, 0);
-      this.cube.rotation.set(0, 0, 0);
-      this.cube.scale.set(1, 1, 1);
+    this.cube.position.set(config.cubePosition.x, config.cubePosition.y, config.cubePosition.z);
+    this.cube.rotation.set(config.cubeRotation.x, config.cubeRotation.y, config.cubeRotation.z);
+    this.cube.scale.set(config.cubeScale.x, config.cubeScale.y, config.cubeScale.z);
 
-      // Reset materials to default
-      const materials = this.cube.material;
-      materials.forEach((material) => {
-        material.color.setHex(0x00aaff);
-        material.roughness = 0.5;
-        material.metalness = 0;
-        material.needsUpdate = true;
-      });
-    }
+    this.setDebugMode(config.debugMode);
+    this.setBackgroundVisible(config.showBackground, config.envMapQuality);
+    this.setEnvMapQuality(config.envMapQuality, config.showBackground);
+    const materialOptions = config.selectedFace === null
+      ? { allFaces: true as const }
+      : { targetFace: config.selectedFace };
+    this.setMaterial(config.materialType, config.faceStyle, materialOptions);
+    this.setAutoRotate(true);
 
     this.emit('cameraReset', { type: 'empty' });
     this.requestRender();
@@ -387,14 +364,11 @@ export class Renderer implements IRenderer {
     if (!this.scene || !this.assetManager) return;
 
     try {
-      // Get the cached environment map from AssetManager
       const envMap = await this.assetManager.getEnvMap(quality);
 
       if (envMap) {
-        // Apply to scene with visibility settings
         this.assetManager.applyEnvMapToScene(envMap, showBackground);
 
-        // Force material update to use new environment map
         if (this.cube) {
           const materials = Array.isArray(this.cube.material)
             ? this.cube.material
@@ -414,20 +388,16 @@ export class Renderer implements IRenderer {
     }
   }
 
-  private updateMaterials(materialType: MaterialType, faceStyle: FaceStyle, targetFace?: FaceIndex | null): void {
+  private updateMaterials(materialType: MaterialType, faceStyle: FaceStyle, options: CubeFaceOptions): void {
     if (!this.cube || !this.assetManager) return;
 
-    // Get the pre-instantiated material from AssetManager
     const sourceMaterial = this.assetManager.getMaterial(materialType, faceStyle);
     if (!sourceMaterial) return;
 
     const materials = this.cube.material;
 
     materials.forEach((material, index) => {
-      const shouldUpdate =
-        targetFace === undefined ? false :
-        targetFace === null ? true :
-        targetFace === index;
+      const shouldUpdate = 'allFaces' in options ? options.allFaces : options.targetFace === index;
 
       if (shouldUpdate) {
         // Copy properties from pre-instantiated material template

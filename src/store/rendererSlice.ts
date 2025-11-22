@@ -13,9 +13,14 @@ interface RendererState {
   transformMode: TransformMode;
   fps: number;
   isWebGPU: boolean;
+  cameraPosition: { x: number; y: number; z: number };
+  cameraLookAt: { x: number; y: number; z: number };
+  cubePosition: { x: number; y: number; z: number };
+  cubeRotation: { x: number; y: number; z: number };
+  cubeScale: { x: number; y: number; z: number };
 }
 
-const initialState: RendererState = {
+export const initialState: RendererState = {
   materialType: 'basic',
   selectedFace: null,
   faceStyle: 'wood',
@@ -25,6 +30,11 @@ const initialState: RendererState = {
   transformMode: 'translate',
   fps: 0,
   isWebGPU: WebGPU.isAvailable(),
+  cameraPosition: { x: 0, y: 0, z: 7 },
+  cameraLookAt: { x: 0, y: 0, z: 0 },
+  cubePosition: { x: 0, y: 0, z: 0 },
+  cubeRotation: { x: 0, y: 0, z: 0 },
+  cubeScale: { x: 1, y: 1, z: 1 },
 };
 
 const rendererSlice = createSlice({

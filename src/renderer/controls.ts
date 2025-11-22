@@ -8,7 +8,6 @@ export interface Controls {
   setAutoRotate: (enabled: boolean) => void;
 }
 
-// Configuration constants
 const ROTATION_SPEED = 0.005;
 const AUTO_ROTATE_SPEED = 0.005;
 const ZOOM_SPEED = 0.001;
@@ -24,12 +23,10 @@ export function createControls(
   let previousMousePosition = { x: 0, y: 0 };
   let autoRotate = true;
 
-  // Camera look direction (independent of position)
   const lookTarget = new THREE.Vector3();
   lookTarget.copy(mesh.position);
   camera.lookAt(lookTarget);
 
-  // Track pressed keys for continuous movement
   const keysPressed = new Set<string>();
 
   // Reusable workspace objects to avoid garbage collection pressure
@@ -41,23 +38,21 @@ export function createControls(
     direction: new THREE.Vector3(),
   };
 
-  // Make sure canvas can receive focus
   if (domElement instanceof HTMLCanvasElement) {
     domElement.tabIndex = 1;
   }
 
-  // Controls state
   const controlsState = { enabled: true };
 
-  // Mouse events
   function onMouseDown(event: MouseEvent) {
     if (!controlsState.enabled) return;
     isDragging = true;
     autoRotate = false;
-    // Focus the canvas when clicking on it
+
     if (domElement instanceof HTMLCanvasElement) {
       domElement.focus();
     }
+
     previousMousePosition = {
       x: event.clientX,
       y: event.clientY,
@@ -85,7 +80,6 @@ export function createControls(
     isDragging = false;
   }
 
-  // Touch events
   function onTouchStart(event: TouchEvent) {
     if (!controlsState.enabled) return;
     const touch = event.touches[0];
@@ -146,8 +140,6 @@ export function createControls(
     onNeedRender();
   }
 
-  // Keyboard events - track key state for continuous movement
-  // Note: Keyboard controls should work even when mouse controls are disabled
   function onKeyDown(event: KeyboardEvent) {
     const key = event.key.toLowerCase();
     const code = event.code;
@@ -160,7 +152,6 @@ export function createControls(
       key === 'd' || key === 'arrowright' || code === 'KeyD';
 
     if (isMovementKey) {
-      // Add to pressed keys set
       keysPressed.add(code || key);
       autoRotate = false;
       onNeedRender();
@@ -178,11 +169,9 @@ export function createControls(
     const key = event.key.toLowerCase();
     const code = event.code;
 
-    // Remove from pressed keys set
     keysPressed.delete(code || key);
   }
 
-  // Add event listeners
   domElement.addEventListener('mousedown', onMouseDown);
   domElement.addEventListener('mousemove', onMouseMove);
   domElement.addEventListener('mouseup', onMouseUp);
@@ -204,7 +193,6 @@ export function createControls(
       return controlsState.enabled;
     },
     set keyboardEnabled(value: boolean) {
-      // Keyboard enabled state follows mouse controls for now
       controlsState.enabled = value;
     },
     setAutoRotate: (enabled: boolean) => {
@@ -213,13 +201,10 @@ export function createControls(
     update: () => {
       let needsRender = false;
 
-      // Handle continuous movement based on pressed keys (always enabled)
       if (keysPressed.size > 0) {
-        // Reuse workspace vectors instead of creating new ones every frame
         camera.getWorldDirection(workspace.forward);
         workspace.right.crossVectors(camera.up, workspace.forward).normalize();
 
-        // Check each possible key
         keysPressed.forEach((keyOrCode) => {
           if (keyOrCode === 'w' || keyOrCode === 'arrowup' || keyOrCode === 'KeyW') {
             camera.position.addScaledVector(workspace.forward, MOVE_SPEED);
@@ -237,7 +222,6 @@ export function createControls(
         needsRender = true;
       }
 
-      // Auto-rotate mesh
       if (autoRotate) {
         mesh.rotation.y += AUTO_ROTATE_SPEED;
         needsRender = true;

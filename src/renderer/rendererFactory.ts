@@ -16,16 +16,3 @@ export function getRenderer(): IRenderer {
 
   return Renderer.getInstance();
 }
-
-/**
- * Check if a renderer instance exists (useful for cleanup)
- */
-export function hasRendererInstance(): boolean {
-  const useMock = import.meta.env['VITE_USE_MOCK_RENDERER'] === 'true';
-
-  if (useMock) {
-    return MockRenderer.hasInstance();
-  }
-
-  return Renderer.hasInstance();
-}

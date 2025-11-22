@@ -9,9 +9,6 @@ interface EnvMapAsset {
   isLoaded: boolean;
 }
 
-/**
- * Material configuration for a specific style.
- */
 interface MaterialConfig {
   roughness: number;
   metalness: number;
@@ -49,7 +46,6 @@ export class AssetManager {
 
   private isInitialized = false;
 
-  // Material configuration presets
   private static readonly MATERIAL_CONFIGS: Record<FaceStyle, MaterialConfig> = {
     wood: { roughness: 0.8, metalness: 0, color: 0x8B4513 },
     glass: { roughness: 0.05, metalness: 0, color: 0x87CEEB },
@@ -73,73 +69,49 @@ export class AssetManager {
     this.initializeMaterials();
   }
 
-  /**
-   * Pre-load all environment maps at all quality levels.
-   * Returns a promise that resolves when all assets are loaded.
-   */
   async initialize(): Promise<void> {
     if (this.isInitialized) {
       return;
     }
 
-    const qualities: EnvMapQuality[] = ['1k', '2k', '4k'];
+    // Only wait for 1k texture (default quality) to load
+    // Higher quality textures (2k, 4k) continue loading in background for faster page load
+    await this.loadEnvMap('1k');
 
-    // Start loading all qualities concurrently (asynchronous I/O operations)
-    const loadPromises = qualities.map(quality => this.loadEnvMap(quality));
-
-    // Wait for all to complete (failures are handled gracefully)
-    await Promise.allSettled(loadPromises);
+    this.loadEnvMap('2k');
+    this.loadEnvMap('4k');
 
     this.isInitialized = true;
   }
 
-  /**
-   * Get an environment map texture by quality.
-   * Returns immediately if already loaded, otherwise waits for the load to complete.
-   */
   async getEnvMap(quality: EnvMapQuality): Promise<THREE.Texture | null> {
     const asset = this.envMaps.get(quality);
 
     if (asset) {
-      // Already loading or loaded, return the promise
       return asset.promise;
     }
 
-    // Not yet started, load it now
     return this.loadEnvMap(quality);
   }
 
-  /**
-   * Apply an environment map to the scene.
-   */
   applyEnvMapToScene(texture: THREE.Texture | null, showBackground: boolean): void {
     if (texture && showBackground) {
-      // Show both background and environment reflections
       this.scene.environment = texture;
       this.scene.background = texture;
     } else if (texture && !showBackground) {
-      // Keep environment lighting for materials, but hide the background visual
       this.scene.environment = texture;
       this.scene.background = new THREE.Color(0x1a1a1a);
     } else {
-      // No texture at all
       this.scene.environment = null;
       this.scene.background = new THREE.Color(0x1a1a1a);
     }
   }
 
-  /**
-   * Get a pre-instantiated material by type and style.
-   * Returns immediately with no creation overhead.
-   */
   getMaterial(type: MaterialType, style: FaceStyle): THREE.MeshStandardMaterial | null {
     const key = this.getMaterialKey(type, style);
     return this.materials.get(key) || null;
   }
 
-  /**
-   * Dispose of all loaded assets and cleanup resources.
-   */
   dispose(): void {
     this.envMaps.forEach(asset => {
       if (asset.texture) {
@@ -161,17 +133,11 @@ export class AssetManager {
     this.isInitialized = false;
   }
 
-  /**
-   * Check if a specific quality level is loaded.
-   */
   isLoaded(quality: EnvMapQuality): boolean {
     const asset = this.envMaps.get(quality);
     return asset?.isLoaded ?? false;
   }
 
-  /**
-   * Get loading status for all qualities.
-   */
   getLoadingStatus(): Record<EnvMapQuality, boolean> {
     return {
       '1k': this.isLoaded('1k'),
@@ -206,16 +172,10 @@ export class AssetManager {
     });
   }
 
-  /**
-   * Generate a unique key for material lookup.
-   */
   private getMaterialKey(type: MaterialType, style: FaceStyle): string {
     return `${type}-${style}`;
   }
 
-  /**
-   * Internal method to load and cache an environment map.
-   */
   private loadEnvMap(quality: EnvMapQuality): Promise<THREE.Texture | null> {
     const asset: EnvMapAsset = {
       texture: null,
@@ -225,7 +185,6 @@ export class AssetManager {
 
     this.envMaps.set(quality, asset);
 
-    // Update the asset once loaded
     asset.promise.then(texture => {
       asset.texture = texture;
       asset.isLoaded = true;
@@ -265,8 +224,7 @@ export class AssetManager {
 
               const renderTarget = this.pmremGenerator.fromEquirectangular(texture);
               const envMap = renderTarget.texture;
-
-              // Clean up the original texture after processing
+              
               texture.dispose();
 
               resolve(envMap);
