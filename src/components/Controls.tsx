@@ -11,18 +11,19 @@ const FACE_NAMES: Array<{ index: FaceIndex; name: string }> = [
   { index: 4, name: 'Front' },
   { index: 5, name: 'Back' },
 ];
-const STYLES: FaceStyle[] = ['wood', 'glass', 'fur', 'metal', 'plastic'];
+const STYLES: FaceStyle[] = ['wood', 'glass', 'fur', 'metal', 'plastic', 'gold'];
 
 export function Controls() {
   const { rendererState, fps, isWebGPU, rendererApi } = useRenderer();
 
   // Destructure for convenience
-  const { materialType, selectedFace, faceStyle, debugMode, showBackground, envMapQuality } = rendererState;
+  const { materialType, selectedFace, faceStyle, debugMode, showBackground, envMapQuality, transformMode } = rendererState;
   const {
     setMaterialType,
     setFaceStyle,
     setSelectedFace,
     setDebugMode,
+    setTransformMode,
     setBackgroundVisible,
     setEnvMapQuality,
     resetCamera,
@@ -67,6 +68,32 @@ export function Controls() {
         </div>
       </div>
 
+      {debugMode && (
+        <div className="controls-section">
+          <h3>Transform Mode</h3>
+          <div className="button-group transform-grid">
+            <button
+              className={transformMode === 'translate' ? 'active' : ''}
+              onClick={() => setTransformMode('translate')}
+            >
+              Position
+            </button>
+            <button
+              className={transformMode === 'rotate' ? 'active' : ''}
+              onClick={() => setTransformMode('rotate')}
+            >
+              Rotation
+            </button>
+            <button
+              className={transformMode === 'scale' ? 'active' : ''}
+              onClick={() => setTransformMode('scale')}
+            >
+              Scale
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="controls-section">
         <h3>Background</h3>
         <div className="button-group">
@@ -104,10 +131,10 @@ export function Controls() {
       </div>
 
       <div className="controls-section">
-        <h3>Camera</h3>
+        <h3>Reset</h3>
         <div className="button-group">
           <button onClick={resetCamera}>
-            Reset Position
+            Reset All
           </button>
         </div>
       </div>
@@ -137,7 +164,7 @@ export function Controls() {
 
           <div className="controls-section">
             <h3>Face Style</h3>
-            <div className="button-group">
+            <div className="button-group style-grid">
               {STYLES.map((style) => (
                 <button
                   key={style}

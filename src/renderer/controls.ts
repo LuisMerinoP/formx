@@ -4,6 +4,7 @@ interface Controls {
   update: () => void;
   dispose: () => void;
   enabled: boolean;
+  keyboardEnabled: boolean;
 }
 
 export function createControls(
@@ -41,8 +42,12 @@ export function createControls(
     domElement.tabIndex = 1;
   }
 
+  // Controls state
+  const controlsState = { enabled: true };
+
   // Mouse events
   function onMouseDown(event: MouseEvent) {
+    if (!controlsState.enabled) return;
     isDragging = true;
     autoRotate = false;
     // Focus the canvas when clicking on it
@@ -56,7 +61,7 @@ export function createControls(
   }
 
   function onMouseMove(event: MouseEvent) {
-    if (!isDragging) return;
+    if (!controlsState.enabled || !isDragging) return;
 
     const deltaX = event.clientX - previousMousePosition.x;
     const deltaY = event.clientY - previousMousePosition.y;
@@ -76,6 +81,7 @@ export function createControls(
 
   // Touch events
   function onTouchStart(event: TouchEvent) {
+    if (!controlsState.enabled) return;
     if (event.touches.length === 1) {
       isDragging = true;
       autoRotate = false;
@@ -87,7 +93,7 @@ export function createControls(
   }
 
   function onTouchMove(event: TouchEvent) {
-    if (!isDragging || event.touches.length !== 1) return;
+    if (!controlsState.enabled || !isDragging || event.touches.length !== 1) return;
 
     const deltaX = event.touches[0].clientX - previousMousePosition.x;
     const deltaY = event.touches[0].clientY - previousMousePosition.y;
@@ -128,6 +134,7 @@ export function createControls(
   }
 
   // Keyboard events - track key state for continuous movement
+  // Note: Keyboard controls should work even when mouse controls are disabled
   function onKeyDown(event: KeyboardEvent) {
     const key = event.key.toLowerCase();
     const code = event.code;
@@ -145,8 +152,8 @@ export function createControls(
       autoRotate = false;
       event.preventDefault();
     }
-    // Toggle auto-rotate
-    else if (key === 'r' || code === 'KeyR') {
+    // Toggle auto-rotate (only when controls are enabled)
+    else if ((key === 'r' || code === 'KeyR') && controlsState.enabled) {
       autoRotate = !autoRotate;
       event.preventDefault();
     }
@@ -172,9 +179,21 @@ export function createControls(
   document.addEventListener('keyup', onKeyUp);
 
   return {
-    enabled: true,
+    get enabled() {
+      return controlsState.enabled;
+    },
+    set enabled(value: boolean) {
+      controlsState.enabled = value;
+    },
+    get keyboardEnabled() {
+      return controlsState.enabled;
+    },
+    set keyboardEnabled(value: boolean) {
+      // Keyboard enabled state follows mouse controls for now
+      controlsState.enabled = value;
+    },
     update: () => {
-      // Handle continuous movement based on pressed keys
+      // Handle continuous movement based on pressed keys (always enabled)
       if (keysPressed.size > 0) {
         const moveSpeed = 0.1;
 
@@ -191,16 +210,16 @@ export function createControls(
             camera.position.addScaledVector(workspace.forward, -moveSpeed);
           }
           if (keyOrCode === 'a' || keyOrCode === 'arrowleft' || keyOrCode === 'KeyA') {
-            camera.position.addScaledVector(workspace.right, -moveSpeed);
+            camera.position.addScaledVector(workspace.right, moveSpeed);
           }
           if (keyOrCode === 'd' || keyOrCode === 'arrowright' || keyOrCode === 'KeyD') {
-            camera.position.addScaledVector(workspace.right, moveSpeed);
+            camera.position.addScaledVector(workspace.right, -moveSpeed);
           }
         });
       }
 
-      // Auto-rotate mesh
-      if (autoRotate) {
+      // Auto-rotate mesh (only when mouse controls are enabled)
+      if (autoRotate && controlsState.enabled) {
         mesh.rotation.y += autoRotateSpeed;
       }
     },

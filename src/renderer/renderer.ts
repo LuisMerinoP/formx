@@ -1,30 +1,63 @@
 import * as THREE from 'three';
 import WebGPU from 'three/addons/capabilities/WebGPU.js';
 import { WebGPURenderer } from 'three/webgpu';
+import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 import { createCube } from './cube';
 import { createControls } from './controls';
 import { createFaceLabels } from './faceLabels';
 import { AssetManager } from './assetManager';
-import type { MaterialType, FaceIndex, FaceStyle, EnvMapQuality } from './types';
+import type { MaterialType, FaceIndex, FaceStyle, EnvMapQuality, TransformMode } from './types';
+
+// Extend TransformControls type to include the getHelper() method
+interface TransformControlsWithHelper extends TransformControls {
+  getHelper(): THREE.Object3D;
+}
 
 export type RendererEvent =
   | 'ready'
+  | 'progress'
   | 'envMapLoaded'
   | 'envMapError'
   | 'cameraReset'
   | 'error';
 
-type EventCallback = (data?: unknown) => void;
+export interface ProgressData {
+  type: 'progress';
+  progress: number;
+  message: string;
+}
+
+export interface ErrorData {
+  type: 'error';
+  message: string;
+  error?: unknown;
+}
+
+export interface EnvMapData {
+  type: 'envMap';
+  quality: EnvMapQuality;
+  error?: unknown;
+}
+
+export interface EmptyData {
+  type: 'empty';
+}
+
+export type EventData = ProgressData | ErrorData | EnvMapData | EmptyData;
+
+type EventCallback = (data: EventData) => void;
 
 export interface IRenderer {
   // Lifecycle
   initialize(container: HTMLElement, debugMode: boolean, envMapQuality: EnvMapQuality): Promise<void>;
+  dispose(): void;
 
   // Renderer operations (stateless - accept state as parameters)
   setMaterialType(type: MaterialType, faceStyle: FaceStyle, face?: FaceIndex | null): void;
   setFaceStyle(type: MaterialType, style: FaceStyle, face?: FaceIndex | null): void;
   setSelectedFace(face: FaceIndex | null): void;
   setDebugMode(enabled: boolean): void;
+  setTransformMode(mode: TransformMode): void;
   setBackgroundVisible(visible: boolean, envMapQuality: EnvMapQuality): void;
   setEnvMapQuality(quality: EnvMapQuality, showBackground: boolean): void;
   resetCamera(): void;
@@ -46,11 +79,12 @@ export class Renderer implements IRenderer {
   private camera: THREE.PerspectiveCamera | null = null;
   private renderer: THREE.WebGLRenderer | WebGPURenderer | null = null;
   private cube: THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial[]> | null = null;
-  private controls: { update: () => void; dispose: () => void } | null = null;
-  private axesHelper: THREE.AxesHelper | null = null;
+  private controls: { update: () => void; dispose: () => void; enabled: boolean; keyboardEnabled: boolean } | null = null;
+  private transformControls: TransformControlsWithHelper | null = null;
   private faceLabels: THREE.Group | null = null;
   private assetManager: AssetManager | null = null;
   private _isWebGPU = false;
+  private lights: THREE.Light[] = [];
 
   private animationId: number | null = null;
   private eventListeners: Map<string, Set<EventCallback>> = new Map();
@@ -65,25 +99,30 @@ export class Renderer implements IRenderer {
     return Renderer.instance;
   }
 
-  static dispose(): void {
-    if (Renderer.instance) {
-      Renderer.instance.cleanup();
-      Renderer.instance = null;
-    }
-  }
-
   static hasInstance(): boolean {
     return Renderer.instance !== null;
   }
 
   async initialize(container: HTMLElement, debugMode: boolean, envMapQuality: EnvMapQuality): Promise<void> {
     try {
+      this.emit('progress', { type: 'progress', progress: 0, message: 'Creating canvas...' });
       const canvas = document.createElement('canvas');
       canvas.tabIndex = 1;
       container.appendChild(canvas);
 
+      this.emit('progress', { type: 'progress', progress: 10, message: 'Setting up scene...' });
       this.scene = new THREE.Scene();
       this.scene.background = new THREE.Color(0x1a1a1a);
+
+      // Add lights for when environment map is disabled
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+      this.scene.add(ambientLight);
+      this.lights.push(ambientLight);
+
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+      directionalLight.position.set(5, 5, 5);
+      this.scene.add(directionalLight);
+      this.lights.push(directionalLight);
 
       this.camera = new THREE.PerspectiveCamera(
         75,
@@ -93,6 +132,7 @@ export class Renderer implements IRenderer {
       );
       this.camera.position.z = 7;
 
+      this.emit('progress', { type: 'progress', progress: 20, message: 'Initializing renderer...' });
       // Try WebGPU first, fallback to WebGL
       if (WebGPU.isAvailable()) {
         console.log('WebGPU is available! Using WebGPU renderer.');
@@ -112,33 +152,47 @@ export class Renderer implements IRenderer {
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
       this.renderer.toneMappingExposure = 1;
 
+      this.emit('progress', { type: 'progress', progress: 40, message: 'Creating scene objects...' });
       this.cube = createCube();
       this.scene.add(this.cube);
 
       this.controls = createControls(this.cube, canvas, this.camera);
       canvas.focus();
 
-      this.axesHelper = new THREE.AxesHelper(1.5);
-      this.axesHelper.visible = debugMode;
-      this.scene.add(this.axesHelper);
+      // Create TransformControls for debug visualization
+      this.transformControls = new TransformControls(this.camera, canvas) as TransformControlsWithHelper;
+      this.transformControls.attach(this.cube);
+      this.transformControls.size = 0.8;
+      this.transformControls.space = 'world';
+      this.transformControls.setMode('translate');
+      this.transformControls.enabled = debugMode;
+      if (debugMode) {
+        const gizmo = this.transformControls.getHelper();
+        this.scene.add(gizmo);
+      }
 
       this.faceLabels = createFaceLabels();
       this.faceLabels.visible = debugMode;
       this.cube.add(this.faceLabels);
 
+      this.emit('progress', { type: 'progress', progress: 50, message: 'Loading assets...' });
       // Initialize AssetManager and pre-load all environment maps
       this.assetManager = new AssetManager(this.scene, this.renderer, this._isWebGPU);
       await this.assetManager.initialize();
 
+      this.emit('progress', { type: 'progress', progress: 80, message: 'Applying environment map...' });
       // Apply the initial environment map quality
       await this.loadEnvironmentMap(envMapQuality, true);
 
+      this.emit('progress', { type: 'progress', progress: 95, message: 'Starting animation...' });
       // Start animation loop
       this.start();
 
-      this.emit('ready');
+      this.emit('progress', { type: 'progress', progress: 100, message: 'Ready!' });
+      this.emit('ready', { type: 'empty' });
     } catch (error) {
-      this.emit('error', { message: 'Initialization failed', error });
+      this.emit('error', { type: 'error', message: 'Initialization failed', error });
+      throw error;
     }
   }
 
@@ -166,12 +220,31 @@ export class Renderer implements IRenderer {
   }
 
   setDebugMode(enabled: boolean): void {
-    if (this.axesHelper) {
-      this.axesHelper.visible = enabled;
+    // Toggle TransformControls
+    if (this.transformControls && this.scene) {
+      this.transformControls.enabled = enabled;
+      const gizmo = this.transformControls.getHelper();
+      if (enabled) {
+        this.scene.add(gizmo);
+      } else {
+        this.scene.remove(gizmo);
+      }
+    }
+
+    // Disable custom mouse controls when TransformControls are active
+    // But keep keyboard controls enabled
+    if (this.controls) {
+      this.controls.enabled = !enabled;
     }
 
     if (this.faceLabels) {
       this.faceLabels.visible = enabled;
+    }
+  }
+
+  setTransformMode(mode: TransformMode): void {
+    if (this.transformControls) {
+      this.transformControls.setMode(mode);
     }
   }
 
@@ -188,8 +261,16 @@ export class Renderer implements IRenderer {
     if (this.camera) {
       this.camera.position.set(0, 0, 7);
       this.camera.lookAt(0, 0, 0);
-      this.emit('cameraReset');
     }
+
+    // Reset cube transform (position, rotation, scale)
+    if (this.cube) {
+      this.cube.position.set(0, 0, 0);
+      this.cube.rotation.set(0, 0, 0);
+      this.cube.scale.set(1, 1, 1);
+    }
+
+    this.emit('cameraReset', { type: 'empty' });
   }
 
   getFPS(): number {
@@ -255,11 +336,15 @@ export class Renderer implements IRenderer {
     }
   }
 
-  private cleanup(): void {
+  dispose(): void {
     this.stop();
 
     if (this.controls) {
       this.controls.dispose();
+    }
+
+    if (this.transformControls) {
+      this.transformControls.dispose();
     }
 
     if (this.assetManager) {
@@ -272,9 +357,12 @@ export class Renderer implements IRenderer {
     }
 
     this.eventListeners.clear();
+
+    // Clear the singleton instance
+    Renderer.instance = null;
   }
 
-  private emit(event: RendererEvent, data?: unknown): void {
+  private emit(event: RendererEvent, data: EventData): void {
     const listeners = this.eventListeners.get(event);
     if (listeners) {
       listeners.forEach((callback) => callback(data));
@@ -303,12 +391,12 @@ export class Renderer implements IRenderer {
           });
         }
 
-        this.emit('envMapLoaded', { quality });
+        this.emit('envMapLoaded', { type: 'envMap', quality });
       } else {
-        this.emit('envMapError', { quality });
+        this.emit('envMapError', { type: 'envMap', quality });
       }
     } catch (error) {
-      this.emit('envMapError', { quality, error });
+      this.emit('envMapError', { type: 'envMap', quality, error });
     }
   }
 
@@ -339,6 +427,8 @@ export class Renderer implements IRenderer {
         material.roughness = sourceMaterial.roughness;
         material.metalness = sourceMaterial.metalness;
         material.color.copy(sourceMaterial.color);
+        material.envMap = sourceMaterial.envMap;
+        material.envMapIntensity = sourceMaterial.envMapIntensity;
         material.needsUpdate = true;
       }
     });

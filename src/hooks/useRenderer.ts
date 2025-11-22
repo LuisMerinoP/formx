@@ -2,7 +2,7 @@ import { useCallback, useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import * as rendererActions from '../store/rendererSlice';
 import { Renderer } from '../renderer/renderer';
-import type { MaterialType, FaceIndex, FaceStyle, EnvMapQuality } from '../renderer/types';
+import type { MaterialType, FaceIndex, FaceStyle, EnvMapQuality, TransformMode } from '../renderer/types';
 
 export function useRenderer() {
   const dispatch = useAppDispatch();
@@ -54,6 +54,11 @@ export function useRenderer() {
     renderer.setEnvMapQuality(quality, rendererState.showBackground);
   }, [dispatch, renderer, rendererState.showBackground]);
 
+  const setTransformMode = useCallback((mode: TransformMode) => {
+    dispatch(rendererActions.setTransformMode(mode));
+    renderer.setTransformMode(mode);
+  }, [dispatch, renderer]);
+
   const resetCamera = useCallback(() => {
     // No Redux state to update - purely a renderer operation
     renderer.resetCamera();
@@ -72,6 +77,7 @@ export function useRenderer() {
       setFaceStyle,
       setSelectedFace,
       setDebugMode,
+      setTransformMode,
       setBackgroundVisible,
       setEnvMapQuality,
       resetCamera,

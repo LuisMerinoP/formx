@@ -57,6 +57,7 @@ export class AssetManager {
     fur: { roughness: 0.9, metalness: 0, color: 0xD2691E },
     metal: { roughness: 0.1, metalness: 1, color: 0xC0C0C0 },
     plastic: { roughness: 0.5, metalness: 0, color: 0xFF6347 },
+    gold: { roughness: 0.3, metalness: 1, color: 0xFFD700 },
   };
 
   constructor(scene: THREE.Scene, renderer: THREE.WebGLRenderer | WebGPURenderer, isWebGPU: boolean) {
@@ -113,10 +114,16 @@ export class AssetManager {
    * Apply an environment map to the scene.
    */
   applyEnvMapToScene(texture: THREE.Texture | null, showBackground: boolean): void {
-    if (texture) {
+    if (texture && showBackground) {
+      // Show both background and environment reflections
       this.scene.environment = texture;
-      this.scene.background = showBackground ? texture : null;
+      this.scene.background = texture;
+    } else if (texture && !showBackground) {
+      // Hide background but also remove environment reflections
+      this.scene.environment = null;
+      this.scene.background = null;
     } else {
+      // No texture at all
       this.scene.environment = null;
       this.scene.background = null;
     }
@@ -180,7 +187,7 @@ export class AssetManager {
    */
   private initializeMaterials(): void {
     const materialTypes: MaterialType[] = ['basic', 'pbr'];
-    const faceStyles: FaceStyle[] = ['wood', 'glass', 'fur', 'metal', 'plastic'];
+    const faceStyles: FaceStyle[] = ['wood', 'glass', 'fur', 'metal', 'plastic', 'gold'];
 
     materialTypes.forEach(type => {
       faceStyles.forEach(style => {

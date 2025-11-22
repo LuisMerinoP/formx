@@ -1,6 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
-import type { MaterialType, FaceIndex, FaceStyle, EnvMapQuality } from '../renderer/types';
+import type { MaterialType, FaceIndex, FaceStyle, EnvMapQuality, TransformMode } from '../renderer/types';
 
 interface RendererState {
   materialType: MaterialType;
@@ -9,6 +9,7 @@ interface RendererState {
   debugMode: boolean;
   showBackground: boolean;
   envMapQuality: EnvMapQuality;
+  transformMode: TransformMode;
 }
 
 const initialState: RendererState = {
@@ -18,6 +19,7 @@ const initialState: RendererState = {
   debugMode: false,
   showBackground: true,
   envMapQuality: '1k',
+  transformMode: 'translate',
 };
 
 const rendererSlice = createSlice({
@@ -42,6 +44,9 @@ const rendererSlice = createSlice({
     setEnvMapQuality(state, action: PayloadAction<EnvMapQuality>) {
       state.envMapQuality = action.payload;
     },
+    setTransformMode(state, action: PayloadAction<TransformMode>) {
+      state.transformMode = action.payload;
+    },
   },
 });
 
@@ -52,6 +57,7 @@ export const {
   toggleDebugMode,
   toggleBackground,
   setEnvMapQuality,
+  setTransformMode,
 } = rendererSlice.actions;
 
 export default rendererSlice.reducer;
