@@ -2,6 +2,8 @@
 
 An interactive 3D application for exploring different materials and lighting techniques using Three.js with WebGPU/WebGL support.
 
+![alt text](image.png)
+
 ## How to Run
 
 ```bash
